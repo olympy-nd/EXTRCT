@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>أداة التسوية المصرفية</title>
+<title>أداة التسوية المصرفية – مطابقة كشف المصرف مع دفتري الفرع والادارة</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>var XLSX_READ = window.XLSX;</script>
 <!-- نسخة تدعم تنسيق الخلايا عند التصدير (اختيارية: يعمل التصدير بدونها لكن بلا تنسيق) -->
@@ -138,11 +138,6 @@ button,input,select{font-family:inherit;}
 .memo-note{margin-top:10px; background:var(--brass-bg); border:1px solid var(--brass-line); border-radius:var(--r-s); padding:9px 12px; font-size:12px; color:#6B3F0E; display:flex; flex-direction:column; gap:4px;}
 .memo-note .txt{font-weight:600;}
 .runrow{margin-top:18px;}
-.toast{position:fixed; inset-inline:16px; bottom:16px; margin-inline:auto; max-width:560px; z-index:60; background:#0F2438; color:#fff; border-radius:10px; padding:12px 16px; font-size:13px; line-height:1.6; box-shadow:0 8px 24px rgba(15,36,56,.25); display:flex; gap:12px; align-items:flex-start;}
-.toast[hidden]{display:none;}
-.toast.bad{background:#B3261E;}
-.toast.good{background:#2F6B45;}
-.toast button{background:none; border:0; color:inherit; font-size:16px; cursor:pointer; line-height:1; padding:2px 4px; margin-inline-start:auto;}
 .err{background:var(--danger-bg); color:var(--danger); border:1px solid #F1C5C1; border-radius:var(--r-s); padding:10px 14px; margin-top:12px; display:none; font-size:12.5px;}
 .err:empty{display:none!important;}
 .progress{display:none; text-align:center; color:var(--ink); font-weight:500; margin-top:10px; font-size:13px;}
@@ -399,7 +394,6 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
   </div>
 </main>
 
-<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" aria-label="إغلاق" onclick="hideToast()">×</button></div>
 <div id="dash">
   <div class="dashgrid">
     <nav class="tabs" id="tabs" aria-label="أوراق التسوية"></nav>
@@ -1320,13 +1314,7 @@ function clearSlot(s){
   parsed[s]=null; names[s]=null; infos[s]=null;
   $('slot-'+s).classList.remove('ok'); $('f-'+s).textContent=''; $('st-'+s).textContent='بانتظار الملف';
 }
-function showErr(m){ const e=$('err'); e.textContent='⚠ '+m; e.style.display='block';
-  if($('uploadScreen').style.display==='none') toast(m,'bad'); }
-let TOAST_T=null;
-function toast(m,kind,ms){ const t=$('toast'); if(!t) return; $('toastMsg').textContent=m;
-  t.className='toast'+(kind?' '+kind:''); t.hidden=false; clearTimeout(TOAST_T);
-  if(ms!==0) TOAST_T=setTimeout(hideToast, ms||7000); }
-function hideToast(){ const t=$('toast'); if(t) t.hidden=true; }
+function showErr(m){ const e=$('err'); e.textContent='⚠ '+m; e.style.display='block'; }
 
 /* ================= وضع التسوية ================= */
 function applyTreasuryUI(){
@@ -2488,10 +2476,6 @@ const xMemoNote=b=>isMemoB(b)?('['+memoRefOf(b)+'] '):'';
 const xKinds=(K,b)=>isMemoB(b)?K.map(k=>k==='bank'?'memo':k):K;
 const IX=i=>memoOn()?i:i-1;
 function exportExcel(outFmt){
-  try{ exportExcel0(outFmt); toast('تم إنشاء ملف Excel – تحقق من مجلد التنزيلات.','good'); }
-  catch(e){ console.error(e); toast('تعذّر إنشاء ملف Excel: '+((e&&e.message)||e),'bad',0); NOSRC=false; }
-}
-function exportExcel0(outFmt){
   NOSRC=false;
   outFmt = outFmt || 'xls';
   const XW = (typeof XLSX_STYLE!=='undefined' && XLSX_STYLE) ? XLSX_STYLE : XLSX;   // نسخة تدعم التنسيق إن توفرت
@@ -2956,7 +2940,7 @@ function exportExcel0(outFmt){
     Views:[{RTL:true}],
     Sheets: wb.SheetNames.map(n=>({name:n, Hidden: HIDE.includes(n)?1:0})),
   };
-  const base=(TREASURY?'مذكرة_التسوية_':'التسوية_المصرفية_')+E.fmtPad(SD).replace(/\//g,'-')+'_حتى_'+E.fmtPad(ED).replace(/\//g,'-')
+  const base=(TREASURY?'خزينة_مذكرة_التسوية_':'التسوية_المصرفية_')+E.fmtPad(SD).replace(/\//g,'-')+'_حتى_'+E.fmtPad(ED).replace(/\//g,'-')
     +(MODE==='exact'?'_تاريخ_مطابق':MODE==='oneday'?'_فارق_يوم':'');
   if(outFmt==='xls')          downloadXls(wb, base+'.xls');                       // 97-2003 مع التنسيق (SpreadsheetML)
   else if(outFmt==='xlsbin')  XW.writeFile(wb, base+'.xls', {bookType:'biff8'});  // 97-2003 ثنائي أصلي بلا تنسيق
