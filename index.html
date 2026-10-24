@@ -2930,6 +2930,23 @@ function exportExcel0(outFmt){
     r++;
     M.r=r;
     M.widths=[20.5,108,21,49,25,25,23,131];
+    /* حساب نتيجة كل معادلة وتخزينها، ليعرض Excel الأرقام فور فتح الملف دون الحاجة لإعادة الحساب */
+    {
+      const val=ref=>{ const c=M.cells[ref]; return (c&&typeof c.v==='number')?c.v:0; };
+      const evalF=f=>{
+        let x=f.replace(/SUM\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)/g,(m,c1,r1,c2,r2)=>{
+          const a=XLSX.utils.decode_cell(c1+r1), b=XLSX.utils.decode_cell(c2+r2); let t=0;
+          for(let rr=a.r;rr<=b.r;rr++) for(let cc=a.c;cc<=b.c;cc++) t+=val(XLSX.utils.encode_cell({r:rr,c:cc}));
+          return '('+t+')'; });
+        x=x.replace(/([A-Z]+)(\d+)/g,(m)=>'('+val(m)+')');
+        if(!/^[\d\s.+\-()eE]*$/.test(x)) return 0;
+        try{ return +(+Function('return ('+x+')')()).toFixed(3); }catch(_){ return 0; }
+      };
+      Object.keys(M.cells).filter(k=>M.cells[k].f)
+        .map(k=>({k,a:XLSX.utils.decode_cell(k)}))
+        .sort((p,q)=>p.a.r-q.a.r||p.a.c-q.a.c)
+        .forEach(o=>{ M.cells[o.k].v=evalF(M.cells[o.k].f); });
+    }
     const ws=M.build();
     const hts=[]; for(let i=0;i<r;i++) hts[i]={hpt:30};
     ws['!rows']=hts;
