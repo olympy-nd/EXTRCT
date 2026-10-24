@@ -591,18 +591,21 @@ var SFX=(function(){
       return vs.filter(function(x){ return /LY/i.test(x.lang); })[0]||vs.filter(function(x){ return /EG/i.test(x.lang); })[0]||vs[0]||null;
     }catch(e){ return null; }
   }
+  /* «تمت السَّحْلَڨَا بنجاح» بفتح اللام */
+  function DONE2(g){ return 'تَمَّتِ السَّحْلَ'+g+'َا بِنَجَاحْ.'; }
   var WORDS={
     sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'السَّحْلُوجَا.':'السَّحْلُوقَا.'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
+    done2:function(v){ return DONE2(v&&/EG/i.test(v.lang)?'ج':'ق'); },                    /* المشهد الثاني */
     obzoq:function(){ return 'أُبُزُقْ.'; }                                              /* ضم كل الحروف مع تسكين القاف */
   };
   /* نماذج نطق «السحلوقة» — حرف ڨ يُنطق كالجيم المصرية [ɡ] */
   var MODELS=[
-    {id:'eg',  t:'جيم مصرية بصوت مصري',       txt:'السَّحْلُوجَا.', pref:[/EG/i],            d:'الصوت المصري ينطق الجيم [ɡ]، وهو الأقرب غالباً إلى «ڨ».'},
-    {id:'q3',  t:'القاف المثلثة «ڨ» بصوت مغاربي', txt:'السَّحْلُوڨَا.', pref:[/TN|DZ|MA/i,/LY/i], d:'الحرف نفسه كما يُكتب في تونس والجزائر، بصوت تونسي أو جزائري أو مغربي إن وُجد.'},
-    {id:'gaf', t:'الكاف الفارسية «گ»',          txt:'السَّحْلُوگَا.', pref:[/IQ|SA|AE|KW|LY/i], d:'تُستعمل «گ» للصوت [ɡ] في العراق والخليج؛ بعض الأصوات تنطقها صحيحة.'},
-    {id:'ghn', t:'الغين «غ»',                    txt:'السَّحْلُوغَا.', pref:[/YE/i,/LY/i,/SA|AE/i], name:/صالح|Saleh/i,    d:'كتابة شائعة لصوت [ɡ] في بعض الترجمات، ونطقها أقرب إلى الغين.'},
-    {id:'lat', t:'حروف لاتينية بصوت إنجليزي',    txt:'Sahh-loo-gah.',  pref:[/^en/i], en:true,   d:'يخرج حرف [ɡ] واضحاً لكن بلكنة إنجليزية.'},
-    {id:'q',   t:'قاف فصحى «ق»',                 txt:'السَّحْلُوقَا.', pref:[/LY/i,/EG/i],       d:'النطق الفصيح بالقاف [q]، للمقارنة.'}
+    {id:'eg', g:'ج',  t:'جيم مصرية بصوت مصري',       txt:'السَّحْلُوجَا.', pref:[/EG/i],            d:'الصوت المصري ينطق الجيم [ɡ]، وهو الأقرب غالباً إلى «ڨ».'},
+    {id:'q3', g:'ڨ',  t:'القاف المثلثة «ڨ» بصوت مغاربي', txt:'السَّحْلُوڨَا.', pref:[/TN|DZ|MA/i,/LY/i], d:'الحرف نفسه كما يُكتب في تونس والجزائر، بصوت تونسي أو جزائري أو مغربي إن وُجد.'},
+    {id:'gaf', g:'گ', t:'الكاف الفارسية «گ»',          txt:'السَّحْلُوگَا.', pref:[/IQ|SA|AE|KW|LY/i], d:'تُستعمل «گ» للصوت [ɡ] في العراق والخليج؛ بعض الأصوات تنطقها صحيحة.'},
+    {id:'ghn', g:'غ', t:'الغين «غ»',                    txt:'السَّحْلُوغَا.', pref:[/YE/i,/LY/i,/SA|AE/i], name:/صالح|Saleh/i,    d:'كتابة شائعة لصوت [ɡ] في بعض الترجمات، ونطقها أقرب إلى الغين.'},
+    {id:'lat', phrase:'Tammat as-sahla-gah binajah.', t:'حروف لاتينية بصوت إنجليزي',    txt:'Sahh-loo-gah.',  pref:[/^en/i], en:true,   d:'يخرج حرف [ɡ] واضحاً لكن بلكنة إنجليزية.'},
+    {id:'q', g:'ق',   t:'قاف فصحى «ق»',                 txt:'السَّحْلُوقَا.', pref:[/LY/i,/EG/i],       d:'النطق الفصيح بالقاف [q]، للمقارنة.'}
   ];
   /* المعتمد: الغين بصوت «صالح» اليمني (Microsoft Online Natural) ما لم يختر المستخدم غيره */
   var DEF_CHOICE={id:'ghn',voice:null};
@@ -628,9 +631,9 @@ var SFX=(function(){
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
-      if(key==='sahlouga'&&CHOICE&&CHOICE.id!=='old'&&on){
+      if((key==='sahlouga'||key==='done2')&&CHOICE&&CHOICE.id!=='old'&&on){
         var m=MODELS.filter(function(x){ return x.id===CHOICE.id; })[0], cv=m&&modelVoice(m,CHOICE.voice);
-        if(cv){ speak(m.txt,cv,fin); return; }
+        if(cv){ speak(key==='done2'?(m.phrase||DONE2(m.g)):m.txt,cv,fin); return; }
       }
       var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
       var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
@@ -648,7 +651,7 @@ var SFX=(function(){
     var t=c.currentTime+0.03, now=function(){ return c.currentTime+0.02; };
     try{
       if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); setTimeout(function(){ say('sahlouga',done); },2150); }
-      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('sahlouga',function(){ S.laugh(now(),12); setTimeout(done,2200); }); }
+      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('done2',function(){ S.laugh(now(),12); setTimeout(done,2200); }); }
       else if(scene==='bzq'){ S.thud(t); S.coins(t); setTimeout(function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); setTimeout(done,1900); }); },300); },350); }
     }catch(e){ console.warn(e); }
     return true;
