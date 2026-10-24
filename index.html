@@ -647,7 +647,15 @@ var SFX=(function(){
     var head='تَمَّتِ السَّحْلَ'+g+'َا', tail='بِنَجَاحْ.';
     var fv=G_LANG.test(v.lang)?fushaVoice(v):null;
     if(!fv){ speak(DONE2(g),v,fin); return; }
-    speak(head+'،',v,function(){ speak(tail,fv,fin); });
+    /* الجزآن يُوضعان في طابور النطق معاً حتى يبدأ الثاني فور انتهاء الأول بلا فاصل */
+    var done=false, wd=null, end=function(){ if(done) return; done=true; clearTimeout(wd); duck(false); fin(); };
+    try{
+      var mk=function(t,vv){ var u=new SpeechSynthesisUtterance(t); u.voice=vv; u.lang=vv.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
+        u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); }; return u; };
+      var u1=mk(head,v), u2=mk(tail,fv);
+      u1.onerror=end; u2.onend=end; u2.onerror=end;
+      speechSynthesis.speak(u1); speechSynthesis.speak(u2); wd=setTimeout(end,4500);
+    }catch(e){ end(); }
   }
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
