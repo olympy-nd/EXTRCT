@@ -281,6 +281,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 /* =============== شاشة الترحيب =============== */
 .splash{position:fixed; inset:0; z-index:200; background:#0F2438; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 16px; cursor:pointer; transition:opacity .5s ease, visibility .5s;}
 .splash.out{opacity:0; visibility:hidden;}
+.splash[hidden]{display:none;}
 .splash svg{width:min(96vw,860px); height:auto; max-height:70vh;}
 .splash h1{font-size:clamp(24px,5vw,40px); font-weight:700; text-align:center; text-wrap:balance; line-height:1.3;}
 .splash p{font-size:clamp(15px,3vw,20px); color:#F2C14E; font-weight:600; letter-spacing:.5px;}
@@ -502,18 +503,25 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 </div>
 <script>
 (function(){
-  var sp=document.getElementById('splash');
+  /* المشهد الأول عند فتح المنظومة، والمشهد الثاني (الضحك) بعد انتهاء المطابقة */
+  var sp=document.getElementById('splash'), T=[];
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduce){
-    sp.querySelectorAll('animate,animateTransform').forEach(function(a){ a.remove(); });
-    sp.classList.add('p2','p3');
-  }else{
-    setTimeout(function(){ sp.classList.add('p2'); },2400);
-    setTimeout(function(){ sp.classList.add('p3'); },2800);
-  }
-  window.hideSplash=function(){ if(!sp||sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(function(){ sp.remove(); },550); };
-  setTimeout(window.hideSplash,reduce?3500:6800);
-  document.addEventListener('keydown',function(){ window.hideSplash(); },{once:true});
+  if(reduce) sp.querySelectorAll('animate,animateTransform').forEach(function(a){ a.remove(); });
+  var clear=function(){ T.forEach(clearTimeout); T=[]; };
+  window.hideSplash=function(){
+    if(!sp||sp.hidden||sp.classList.contains('out')) return;
+    clear(); sp.classList.add('out');
+    T.push(setTimeout(function(){ sp.hidden=true; sp.classList.remove('out','p2','p3'); },550));
+  };
+  window.showLaugh=function(){
+    if(!sp) return;
+    clear(); sp.classList.remove('out','p3'); sp.classList.add('p2'); sp.hidden=false;
+    if(reduce) sp.classList.add('p3');
+    else T.push(setTimeout(function(){ sp.classList.add('p3'); },350));
+    T.push(setTimeout(window.hideSplash,4200));
+  };
+  T.push(setTimeout(window.hideSplash,reduce?2500:3000));
+  document.addEventListener('keydown',function(){ window.hideSplash(); });
 })();
 </script>
 <header class="topbar">
@@ -1681,6 +1689,7 @@ function run(){
       $('ctrlBar').style.display='flex';
       updateModeChip();
       applyTreasuryUI();
+      if(window.showLaugh) window.showLaugh();   // مشهد الضحك بعد انتهاء المعالجة
       const trOn=TREASURY&&MEMO_ROWS.length;
       $('closingBadge').innerHTML='<span style="font-size:11px;color:#A9BDD1;font-weight:400">الرصيد الختامي للكشف</span>'+fmt(SUM.closing)+' د.ل';
       $('topSub').textContent='الفترة من '+E.fmtPad(SD)+' حتى '+E.fmtPad(ED)
