@@ -56,9 +56,17 @@ button,input,select{font-family:inherit;}
 .btn.primary:disabled{background:#AAB6C2; border-color:#AAB6C2; cursor:not-allowed;}
 #fmtSel{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:var(--r-s); padding:7px 8px; font-size:12.5px; max-width:170px; cursor:pointer;}
 #fmtSel option{color:var(--text); background:#fff;}
-.exportgrp{display:flex; gap:0;}
-.exportgrp #fmtSel{border-start-end-radius:0; border-end-end-radius:0; border-inline-end:0;}
-.exportgrp .btn{border-start-start-radius:0; border-end-start-radius:0;}
+.exportgrp{display:flex; gap:6px; align-items:center;}
+#expMode{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:var(--r-s); padding:7px 8px; font-size:12.5px; cursor:pointer;}
+#expMode option{color:var(--text); background:#fff;}
+.odoo-panel{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px 16px; background:#fff; border:1px solid var(--line); border-radius:var(--r-m); padding:14px 16px; margin-bottom:12px;}
+.odoo-panel label{display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); min-width:0;}
+.odoo-panel input{border:1px solid var(--line); border-radius:var(--r-s); padding:7px 10px; font-size:13px; color:var(--text); background:#FAFBFC; min-width:0; width:100%;}
+.odoo-panel input:focus{border-color:var(--bank); background:#fff;}
+.odoo-panel .wide{grid-column:span 2;}
+@media (max-width:640px){ .odoo-panel .wide{grid-column:auto;} }
+.odoo-check{display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; background:var(--led-bg2); color:var(--led);}
+.odoo-check.bad{background:var(--danger-bg); color:var(--danger);}
 .menu{position:relative;}
 .menu-pop{position:absolute; top:calc(100% + 6px); inset-inline-end:0; background:#fff; border:1px solid var(--line); border-radius:var(--r-m); box-shadow:0 8px 24px rgba(15,36,56,.14); padding:6px; min-width:230px; display:none; z-index:40;}
 .menu.open .menu-pop{display:block;}
@@ -391,6 +399,11 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
   <div class="actions">
     <span class="badge" id="closingBadge" style="display:none"></span>
     <div class="exportgrp">
+      <select id="expMode" style="display:none" title="محتوى ملف التصدير">
+        <option value="all">تصدير عادي – كل الأوراق</option>
+        <option value="seraj">تصدير قيود سراج</option>
+        <option value="odoo">تصدير قيود Odoo</option>
+      </select>
       <select id="fmtSel" style="display:none" title="صيغة ملف التصدير">
         <option value="xlsx">Excel ‎.xlsx (موصى به)</option>
         <option value="xls">Excel 97-2003 منسّق</option>
@@ -1535,7 +1548,7 @@ function run(){
       renderDash();
       $('uploadScreen').style.display='none';
       $('dash').style.display='block';
-      ['closingBadge','starBtn','btnChart','btnClose','fmtSel','btnExport','btnPrint','btnReset','btnMore'].forEach(id=>$(id).style.display='');
+      ['closingBadge','starBtn','btnChart','btnClose','expMode','fmtSel','btnExport','btnPrint','btnReset','btnMore'].forEach(id=>$(id).style.display='');
       $('hdModes').style.display='flex';
       $('ctrlBar').style.display='flex';
       updateModeChip();
@@ -2255,6 +2268,142 @@ function renderNewMemo(){
   '<div class="sheetsub">تُبنى آلياً من نتيجة المطابقة: تسقط البنود التي وُجد لها قيد مطابق، وتبقى البنود المعلّقة، وتُضاف البنود الجديدة المكتشفة من كشف المصرف'+(memoOn()?' – البنود المرحّلة من المذكرة السابقة مميّزة بشارة «مرحّل»':'')+'</div>'+
   cards+inp+'<div class="hint" style="margin:4px 2px 8px">الورقة معروضة بنفس ترتيب أعمدة ورقة المذكرة المرفوعة، والملف المصدَّر يطابقها تنسيقاً وتخطيطاً بالكامل (بما في ذلك بلوك حركة الدفاتر أعلى الجدول وبلوك موازنة الأرصدة أسفله ومعادلات الرصيد المتتابع).</div>'+tools('newmemo')+'<div class="tblbox"><table id="tbl-newmemo">'+h+'</table></div>'+hc;
 }
+/* ================= قيود Odoo – بنية ملف الاستيراد (Misc. Operations) ================= */
+const ODOO_BANK=[
+  {code:'132001', name:'مصرف الجمهورية 14110 - راكان'},
+  {code:'132002', name:'مصرف الوحدة 40019 - راكان'},
+  {code:'132003', name:'مصرف المتحد 104001 - راكان'},
+  {code:'132004', name:'مصرف الصحاري 6175 - راكان'},
+  {code:'132005', name:'المصرف الاسلامي 2014 - راكان'},
+  {code:'132006', name:'مصرف اليقين 50017 - راكان'},
+  {code:'132007', name:'مصرف التجاري الوطني 607016 - راكان'},
+];
+const ODOO_SHADOW=[
+  {code:'133001', name:'حساب ظل - مصرف الجمهورية 14110 ركان'},
+  {code:'133002', name:'حساب ظل - مصرف الوحدة 40019 ركان'},
+  {code:'133003', name:'حساب ظل - مصرف المتحد 104001 والبطاقات 29770 ركان'},
+  {code:'133004', name:'حساب ظل - مصرف الصحاري 6175 ركان'},
+  {code:'133005', name:'حساب ظل - المصرف الاسلامي 2014 ركان'},
+  {code:'133006', name:'حساب ظل - مصرف اليقين 50017 ركان'},
+];
+const ODOO_HEAD=['Reference','Date','Journal*','Journal Items/Account*','Journal Items/Partner','Journal Items/Label','Journal Items/Debit','Journal Items/Credit'];
+const ODOO_SHEETS={odf:'قيد الفرع odoo', oda:'قيد الادارة odoo', odc:'قيد الإقفال odoo'};
+const ODOO={date:'', autoDate:true, journal:'Miscellaneous Operations', closeAcct:'140000', partner:'وكيل طرابلس',
+  closeLabel:'', autoLabel:true, ref:{odf:'',oda:'',odc:''}};
+const ODOO_OVR={bank:{}, shadow:{}};
+const r3=v=>+(+v||0).toFixed(3);
+const odDmy=d=>{const t=E.daysToYMD(d); return t[2]+'-'+t[1]+'-'+t[0];};
+const odIso=d=>{const t=E.daysToYMD(d); return t[0]+'-'+String(t[1]).padStart(2,'0')+'-'+String(t[2]).padStart(2,'0');};
+function odooSyncDefaults(){
+  if(ED==null) return;
+  if(ODOO.autoDate) ODOO.date=odIso(ED);
+  if(ODOO.autoLabel) ODOO.closeLabel='تخفيض مديونية الي يوم '+odDmy(ED);
+}
+function odooFind(list, kind, name){
+  if(!name) return null;
+  const ov=ODOO_OVR[kind][name];
+  if(ov){ const f=list.find(a=>a.code===ov); if(f) return f; }
+  const k=bankKeyOf(name);
+  return k ? (list.find(a=>bankKeyOf(a.name)===k)||null) : null;
+}
+/* يبني أسطر القيد: odf = قيد الفرع، oda = قيد الادارة، odc = قيد الإقفال */
+function odooLines(kind){
+  const isFar=kind==='odf';
+  const pairs=isFar?R.mf:R.ma, L=isFar?FAR:ADR, base=acctOf(isFar?FAR_ALL:ADR, isFar?'فرع':'ادارة');
+  const lines=[], miss={};
+  pairs.forEach(x=>{
+    const l=L[x[1]], b=BANK[x[0]];
+    const name=l.acct||base.name, label=l.bayan||b.bayan||'';
+    const a=odooFind(ODOO_BANK,'bank',name); if(!a) miss[name]=1;
+    lines.push({acct:a?a.code:'', name, label, debit:r3(l.debit), credit:r3(l.credit), memo:isMemoB(b)});
+    if(kind==='odc'){
+      const sh=odooFind(ODOO_SHADOW,'shadow',name); if(!sh) miss[name+' (حساب ظل)']=1;
+      lines.push({acct:sh?sh.code:'', name, label, debit:r3(l.credit), credit:r3(l.debit), memo:isMemoB(b), close:true});
+    }
+  });
+  let td=lines.reduce((a,x)=>a+x.debit,0), tc=lines.reduce((a,x)=>a+x.credit,0);
+  if(kind!=='odc' && lines.length){
+    const net=r3(td-tc);
+    lines.push({acct:ODOO.closeAcct, partner:ODOO.partner, label:ODOO.closeLabel, debit:net<0?-net:0, credit:net>0?net:0, closing:true});
+    td+=net<0?-net:0; tc+=net>0?net:0;
+  }
+  return {lines, missing:Object.keys(miss), td:r3(td), tc:r3(tc)};
+}
+function setOdoo(field, val, kind){
+  if(field==='ref') ODOO.ref[kind]=val;
+  else { ODOO[field]=val; if(field==='date') ODOO.autoDate=false; if(field==='closeLabel') ODOO.autoLabel=false; }
+  ['odf','oda','odc'].forEach(id=>{ const d=$('sheet-'+id); if(d) d.querySelector('.odoo-body').innerHTML=odooBody(id); });
+}
+function setOdooOvr(kind, name, code){
+  if(code) ODOO_OVR[kind][name]=code; else delete ODOO_OVR[kind][name];
+  ['odf','oda','odc'].forEach(id=>{ const d=$('sheet-'+id); if(d) d.querySelector('.odoo-body').innerHTML=odooBody(id); });
+}
+function odooBody(kind){
+  const R1=odooLines(kind), ok=Math.abs(R1.td-R1.tc)<0.0005&&R1.lines.length;
+  const refTxt=ODOO.ref[kind]?('سند قيد / '+ODOO.ref[kind]):'';
+  const names=[...new Set(R1.lines.filter(x=>x.name).map(x=>x.name))];
+  const sel=(list,kind2,nm)=>{ const cur=odooFind(list,kind2,nm);
+    return '<select class="btn" style="font-size:11.5px;padding:4px 8px;max-width:320px" onchange="setOdooOvr(\''+kind2+'\','+JSON.stringify(nm).replace(/"/g,'&quot;')+',this.value)">'
+      +'<option value="">— بدون —</option>'+list.map(a=>'<option value="'+a.code+'"'+(cur&&cur.code===a.code?' selected':'')+'>'+a.code+' – '+esc(a.name)+'</option>').join('')+'</select>'; };
+  const map=names.length?('<div class="notesbox" style="margin:0 0 12px"><div class="h">ربط حسابات الدفتر بحسابات Odoo</div><table style="width:100%;font-size:12px;min-width:0"><tr class="inhead"><td>حساب الدفتر</td><td>حساب المصرف (132)</td>'+(kind==='odc'?'<td>حساب الظل (133)</td>':'')+'</tr>'
+    +names.map(nm=>'<tr class="d"><td>'+esc(nm)+'</td><td>'+sel(ODOO_BANK,'bank',nm)+'</td>'+(kind==='odc'?'<td>'+sel(ODOO_SHADOW,'shadow',nm)+'</td>':'')+'</tr>').join('')+'</table></div>'):'';
+  const warn=R1.missing.length?('<div class="sheetsub" style="color:var(--danger)">لم يُربط بحساب Odoo: '+R1.missing.map(esc).join(' ، ')+' – اختر الحساب من جدول الربط، وإلا سيرفض Odoo الاستيراد.</div>'):'';
+  let h='<tr>'+ODOO_HEAD.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  if(!R1.lines.length) h+='<tr class="emptyrow"><td colspan="8">لا توجد قيود متطابقة</td></tr>';
+  R1.lines.forEach((x,i)=>{
+    h+='<tr class="d'+(x.memo?' memosrc':'')+(x.closing?' origrow':'')+(x.acct?'':' warnrow')+'">'
+      +'<td>'+(i===0?esc(refTxt):'')+'</td><td class="cen">'+(i===0&&ODOO.date?esc(ODOO.date):'')+'</td><td>'+(i===0?esc(ODOO.journal):'')+'</td>'
+      +'<td class="cen">'+esc(x.acct)+'</td><td>'+esc(x.partner||'')+'</td><td>'+esc(x.label)+'</td>'
+      +'<td class="num">'+x.debit.toFixed(3)+'</td><td class="num">'+x.credit.toFixed(3)+'</td></tr>';
+  });
+  h+='<tr class="totrow"><td colspan="6">الإجمالي</td><td class="num">'+R1.td.toFixed(3)+'</td><td class="num">'+R1.tc.toFixed(3)+'</td></tr>';
+  return warn+map
+    +'<div style="margin:0 0 8px"><span class="odoo-check'+(ok?'':' bad')+'">'+(ok?'القيد متزن':'القيد غير متزن أو فارغ')+'</span> &nbsp; <span style="color:var(--muted);font-size:12px">'+R1.lines.length+' سطراً</span></div>'
+    +tools(kind)+'<div class="tblbox"><table id="tbl-'+kind+'">'+h+'</table></div>';
+}
+function renderOdoo(kind){
+  odooSyncDefaults();
+  const sub={odf:'قيود دفتر الفرع المتطابقة على حساب المصرف (132)، وسطر إقفال واحد بالمجموع',
+             oda:'قيود دفتر الادارة المتطابقة على حساب المصرف (132)، وسطر إقفال واحد بالصافي',
+             odc:'لكل قيد إدارة متطابق سطران: حساب المصرف (132) بجانبه، وحساب الظل (133) بالجانب المعاكس'}[kind];
+  const f=(id,lbl,field,val,type,cls)=>'<label'+(cls?' class="'+cls+'"':'')+'>'+lbl+'<input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val)+'" onchange="setOdoo(\''+field+'\',this.value,\''+kind+'\')"></label>';
+  const panel='<div class="odoo-panel">'
+    +f('odref-'+kind,'رقم السند (Reference)','ref',ODOO.ref[kind],'text')
+    +f('oddate-'+kind,'تاريخ القيد (Date)','date',ODOO.date,'date')
+    +f('odjrn-'+kind,'اليومية (Journal)','journal',ODOO.journal,'text')
+    +(kind!=='odc'
+      ? f('odacc-'+kind,'حساب الإقفال','closeAcct',ODOO.closeAcct,'text')
+        +f('odprt-'+kind,'الشريك (Partner)','partner',ODOO.partner,'text')
+        +f('odlbl-'+kind,'بيان سطر الإقفال','closeLabel',ODOO.closeLabel,'text','wide')
+      : '')
+    +'</div>';
+  return '<div class="sheettitle">'+ODOO_SHEETS[kind]+'</div><div class="sheetsub">'+sub+' – بنية ملف الاستيراد في Odoo</div>'
+    +panel+'<div class="odoo-body">'+odooBody(kind)+'</div>';
+}
+/* ورقة Excel بنفس بنية ملف index1 */
+function odooWorksheet(kind){
+  const R1=odooLines(kind), ws={}, put=(r,c,cell)=>{ ws[XLSX.utils.encode_cell({r,c})]=cell; };
+  const F={name:'Arial',sz:10};
+  ODOO_HEAD.forEach((h,c)=>put(0,c,{t:'s',v:h,s:{font:Object.assign({bold:true},F)}}));
+  const num=v=>({t:'n',v:v,z:'0.000',s:{font:F,numFmt:'0.000'}});
+  let serial=null;
+  if(ODOO.date){ const m=ODOO.date.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) serial=E.toDays(+m[1],+m[2],+m[3])+25569; }
+  R1.lines.forEach((x,i)=>{
+    const r=i+1;
+    if(i===0){
+      if(ODOO.ref[kind]) put(r,0,{t:'s',v:'سند قيد / '+ODOO.ref[kind],s:{font:F}});
+      if(serial!=null) put(r,1,{t:'n',v:serial,z:'mm-dd-yy',s:{font:F,numFmt:'mm-dd-yy'}});
+      if(ODOO.journal) put(r,2,{t:'s',v:ODOO.journal,s:{font:F}});
+    }
+    if(x.acct) put(r,3,/^\d+$/.test(x.acct)?{t:'n',v:Number(x.acct),s:{font:F}}:{t:'s',v:x.acct,s:{font:F}});
+    if(x.partner) put(r,4,{t:'s',v:x.partner,s:{font:F}});
+    if(x.label) put(r,5,{t:'s',v:x.label,s:{font:F}});
+    put(r,6,num(x.debit)); put(r,7,num(x.credit));
+  });
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(R1.lines.length,1),c:7}});
+  ws['!cols']=[{wch:18},{wch:12},{wch:26},{wch:22},{wch:20},{wch:50},{wch:16},{wch:16}];
+  return ws;
+}
 function buildSheets(){
   const s=[
     {id:'summary',name:'الملخص',fn:renderSummary},
@@ -2279,6 +2428,8 @@ function buildSheets(){
     s.push({id:'qcl',name:'قيد الإقفال',fn:renderClosing});
   }
   s.push({id:'fees',name:'المصروفات المصرفية',fn:renderFees,red:true});
+  if(HAS_FAR) s.push({id:'odf',name:'قيد الفرع',fn:()=>renderOdoo('odf')});
+  if(HAS_ADR){ s.push({id:'oda',name:'قيد الادارة',fn:()=>renderOdoo('oda')}); s.push({id:'odc',name:'قيد الإقفال',fn:()=>renderOdoo('odc')}); }
   return s;
 }
 const NAV_GROUPS=[
@@ -2286,6 +2437,7 @@ const NAV_GROUPS=[
   {t:'كشف المصرف',   ids:['bankonly','fees']},
   {t:'دفتر الفرع',   ids:['mf','unf','qid','prior']},
   {t:'دفتر الادارة', ids:['ma','una','qida','qcl']},
+  {t:'قيود Odoo',    ids:['odf','oda','odc']},
 ];
 function renderDash(){
   const SHEETS=buildSheets();
@@ -2317,7 +2469,7 @@ function renderDash(){
   });
   const rest=SHEETS.filter(x=>!placed[x.id]);
   if(rest.length){ const grp=document.createElement('div'); grp.className='navgrp'; rest.forEach(x=>grp.appendChild(mk(x,false))); tabs.appendChild(grp); }
-  ['newmemo','memo','bankonly','mf','ma','unf','qid','prior','una','qida','qcl','fees'].forEach(id=>filterTable(id,QF[id]||''));
+  ['newmemo','memo','bankonly','mf','ma','unf','qid','prior','una','qida','qcl','fees','odf','oda','odc'].forEach(id=>filterTable(id,QF[id]||''));
 }
 function toggleGroupSrc(){
   GROUP_SRC=!GROUP_SRC;
@@ -3048,14 +3200,29 @@ function exportExcel0(outFmt){
     S.setWidths(UW);
     XW.utils.book_append_sheet(wb,S.build(),'المصروفات');
   }
+  /* --- قيود Odoo بنفس بنية ملف الاستيراد --- */
+  odooSyncDefaults();
+  if(HAS_FAR) XW.utils.book_append_sheet(wb,odooWorksheet('odf'),ODOO_SHEETS.odf);
+  if(HAS_ADR){ XW.utils.book_append_sheet(wb,odooWorksheet('oda'),ODOO_SHEETS.oda); XW.utils.book_append_sheet(wb,odooWorksheet('odc'),ODOO_SHEETS.odc); }
+
+  /* --- خيار التصدير: عادي / قيود سراج / قيود Odoo --- */
+  const expMode=($('expMode')&&$('expMode').value)||'all';
+  const KEEP={seraj:['قيد الفرع','قيد الادارة','قيد الإقفال'], odoo:[ODOO_SHEETS.odf,ODOO_SHEETS.oda,ODOO_SHEETS.odc]}[expMode];
+  if(KEEP){
+    const keep=wb.SheetNames.filter(n=>KEEP.includes(n));
+    if(!keep.length) throw new Error('لا توجد قيود للتصدير في هذا الخيار – تأكد من رفع الدفتر المطلوب');
+    wb.SheetNames.filter(n=>!keep.includes(n)).forEach(n=>delete wb.Sheets[n]);
+    wb.SheetNames=keep;
+  }
   /* إخفاء ورقتي المتطابق (محتواهما مكرر في ورقتي القيد) مع إمكانية إظهارهما من إكسل */
   const HIDE=['متطابق الفرع','متطابق الادارة'];
   wb.Workbook={
     Views:[{RTL:true}],
     Sheets: wb.SheetNames.map(n=>({name:n, Hidden: HIDE.includes(n)?1:0})),
   };
-  const base=(TREASURY?'مذكرة_التسوية_':'التسوية_المصرفية_')+E.fmtPad(SD).replace(/\//g,'-')+'_حتى_'+E.fmtPad(ED).replace(/\//g,'-')
-    +(MODE==='exact'?'_تاريخ_مطابق':MODE==='oneday'?'_فارق_يوم':'');
+  const base=(expMode==='seraj'?'قيود_سراج_':expMode==='odoo'?'قيود_odoo_':(TREASURY?'مذكرة_التسوية_':'التسوية_المصرفية_'))
+    +E.fmtPad(SD).replace(/\//g,'-')+'_حتى_'+E.fmtPad(ED).replace(/\//g,'-')
+    +(expMode==='all'?(MODE==='exact'?'_تاريخ_مطابق':MODE==='oneday'?'_فارق_يوم':''):'');
   if(outFmt==='xls')          downloadXls(wb, base+'.xls');                       // 97-2003 مع التنسيق (SpreadsheetML)
   else if(outFmt==='xlsbin')  XW.writeFile(wb, base+'.xls', {bookType:'biff8'});  // 97-2003 ثنائي أصلي بلا تنسيق
   else                        XW.writeFile(wb, base+'.xlsx',{cellStyles:true});   // منسّق بالكامل
