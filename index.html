@@ -564,12 +564,14 @@ var SFX=(function(){
     },
     spit:function(t){ tone(t,'square',220,90,0.25,0.05); nz(t+0.03,'bandpass',3200,1.4,0.55,0.28,0.01); nz(t+0.38,'lowpass',600,1,0.5,0.12); }
   };
-  /* النطق: يُفضَّل الصوت الليبي ثم المصري (ينطق الجيم «ڨ») ثم أي صوت عربي */
-  function voice(){
+  /* النطق: «السحلوقة» بالصوت المصري (ينطق الجيم g فتخرج «ڨ»)، و«بزق» بالليبي ثم المصري، ثم أي صوت عربي */
+  function voice(key){
     try{
       if(!window.speechSynthesis) return null;
       var vs=speechSynthesis.getVoices().filter(function(x){ return /^ar/i.test(x.lang); });
-      return vs.filter(function(x){ return /LY/i.test(x.lang); })[0]||vs.filter(function(x){ return /EG/i.test(x.lang); })[0]||vs[0]||null;
+      var ly=vs.filter(function(x){ return /LY/i.test(x.lang); })[0], eg=vs.filter(function(x){ return /EG/i.test(x.lang); })[0];
+      /* «السحلوقة» بالصوت المصري دائماً ليخرج حرف «ڨ» صحيحاً */
+      return (key==='sahlouga'?(eg||ly):(ly||eg))||vs[0]||null;
     }catch(e){ return null; }
   }
   var WORDS={
@@ -579,7 +581,7 @@ var SFX=(function(){
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
-      var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
+      var v=on&&voice(key); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
       var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.8; u.pitch=0.55; u.volume=1;
       u.onend=fin; u.onerror=fin; speechSynthesis.speak(u); setTimeout(fin,2500);
     }catch(e){ fin(); }
