@@ -310,22 +310,6 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 @media (prefers-reduced-motion:reduce){ .splash svg,.splash .flash,.splash .coin,.splash .dust{animation:none!important;} }
 .splash.gate small{color:#F2C14E; font-size:16px; font-weight:700; animation:hintp 1.2s ease-in-out infinite;}
 @keyframes hintp{50%{opacity:.45}}
-.vdlg{position:fixed; inset:0; z-index:300; background:rgba(15,36,56,.55); display:flex; align-items:center; justify-content:center; padding:16px;}
-.vdlg[hidden]{display:none;}
-.vd-box{background:var(--surface); color:var(--text); border-radius:14px; width:min(640px,100%); max-height:90vh; overflow:auto; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.3);}
-.vd-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
-.vd-top h2{font-size:18px; margin:0;}
-.vd-sec{font-size:15px; margin:14px 0 8px; color:var(--ink);}
-.vd-intro{font-size:13.5px; color:var(--muted); line-height:1.7; margin:8px 0;}
-.vd-note{font-size:12.5px; background:var(--canvas); border-radius:8px; padding:8px 10px; margin:0 0 10px;}
-.vd-card{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;}
-.vd-card.on{border-color:var(--led); background:var(--led-bg);}
-.vd-h{display:flex; align-items:center; gap:8px; font-size:14px;}
-.vd-tag{font-size:11px; background:var(--led); color:#fff; border-radius:20px; padding:1px 8px;}
-.vd-w{font-size:22px; font-weight:700; color:var(--ink); margin:4px 0;}
-.vd-card p{font-size:12.5px; color:var(--muted); margin:2px 0 8px;}
-.vd-row{display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
-.vd-row select{flex:1 1 180px; min-width:0; padding:6px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:13px;}
 .splash small{position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); color:#7F97AE; font-size:12px;}
 @media (prefers-reduced-motion:reduce){ .splash{transition:none;} }
 </style>
@@ -584,108 +568,57 @@ var SFX=(function(){
     },
     spit:function(t){ tone(t,'square',220,90,0.25,0.05); nz(t+0.03,'bandpass',3200,1.4,0.55,0.28,0.01); nz(t+0.38,'lowpass',600,1,0.5,0.12); }
   };
-  /* النطق: يُفضَّل الصوت الليبي ثم المصري (ينطق الجيم «ڨ») ثم أي صوت عربي */
-  function voice(){
-    try{
-      if(!window.speechSynthesis) return null;
-      var vs=speechSynthesis.getVoices().filter(function(x){ return /^ar/i.test(x.lang); });
-      return vs.filter(function(x){ return /LY/i.test(x.lang); })[0]||vs.filter(function(x){ return /EG/i.test(x.lang); })[0]||vs[0]||null;
-    }catch(e){ return null; }
-  }
-  /* «تمت السَّحْلَڨَا بنجاح» بفتح اللام */
-  function DONE2(g){ return 'تَمَّتِ السَّحْلَ'+g+'َا بِنَجَاحْ.'; }
-  var WORDS={
-    sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'السَّحْلُوجَا.':'السَّحْلُوقَا.'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
-    done2:function(v){ return DONE2(v&&/EG/i.test(v.lang)?'ج':'ق'); },                    /* المشهد الثاني */
-    obzoq:function(){ return 'بْزُقْ!'; }                                              /* ضم كل الحروف مع تسكين القاف */
+  /* ===== النطق المعتمد =====
+     «السَّحْلُوغَا» بصوت صالح اليمني، و«تَمَّتِ السَّحْلَغَا» بصوت صالح ثم «بِنَجَاحْ» بصوت حامد الفصيح،
+     و«بْزُقْ!» بصوت حمدان الإماراتي. إن غاب الصوت في الجهاز يُستخدم أقرب صوت عربي.
+     CLIPS: تسجيلات صوتية مدمجة (إن وُجدت) تُشغَّل بدل القارئ الآلي، بلا إنترنت وبلا تأخير. */
+  var CLIPS={};
+  var VOX={
+    saleh:{name:/صالح|Saleh/i, lang:/YE/i, pref:[/YE/i,/LY/i,/SA|AE/i]},
+    hamed:{name:/حامد|Hamed/i, lang:/SA/i, pref:[/SA/i,/AE|KW|QA|BH|OM/i,/JO|LB|SY|PS/i,/LY/i]},
+    hamdan:{name:/حمدان|Hamdan/i, lang:/AE/i, pref:[/AE/i,/LY/i,/SA/i]}
   };
-  /* نماذج نطق «السحلوقة» — حرف ڨ يُنطق كالجيم المصرية [ɡ] */
-  var MODELS=[
-    {id:'eg', g:'ج',  t:'جيم مصرية بصوت مصري',       txt:'السَّحْلُوجَا.', pref:[/EG/i],            d:'الصوت المصري ينطق الجيم [ɡ]، وهو الأقرب غالباً إلى «ڨ».'},
-    {id:'q3', g:'ڨ',  t:'القاف المثلثة «ڨ» بصوت مغاربي', txt:'السَّحْلُوڨَا.', pref:[/TN|DZ|MA/i,/LY/i], d:'الحرف نفسه كما يُكتب في تونس والجزائر، بصوت تونسي أو جزائري أو مغربي إن وُجد.'},
-    {id:'gaf', g:'گ', t:'الكاف الفارسية «گ»',          txt:'السَّحْلُوگَا.', pref:[/IQ|SA|AE|KW|LY/i], d:'تُستعمل «گ» للصوت [ɡ] في العراق والخليج؛ بعض الأصوات تنطقها صحيحة.'},
-    {id:'ghn', g:'غ', t:'الغين «غ»',                    txt:'السَّحْلُوغَا.', pref:[/YE/i,/LY/i,/SA|AE/i], name:/صالح|Saleh/i, nameLang:/YE/i,    d:'كتابة شائعة لصوت [ɡ] في بعض الترجمات، ونطقها أقرب إلى الغين.'},
-    {id:'lat', phrase:'Tammat as-sahla-gah binajah.', t:'حروف لاتينية بصوت إنجليزي',    txt:'Sahh-loo-gah.',  pref:[/^en/i], en:true,   d:'يخرج حرف [ɡ] واضحاً لكن بلكنة إنجليزية.'},
-    {id:'q', g:'ق',   t:'قاف فصحى «ق»',                 txt:'السَّحْلُوقَا.', pref:[/LY/i,/EG/i],       d:'النطق الفصيح بالقاف [q]، للمقارنة.'}
-  ];
-  /* المعتمد: الغين بصوت «صالح» اليمني (Microsoft Online Natural) ما لم يختر المستخدم غيره */
-  var DEF_CHOICE={id:'ghn',voice:null};
-  var CHOICE=null; try{ CHOICE=JSON.parse(localStorage.getItem('sahVoice')||'null'); }catch(e){}
-  if(!CHOICE) CHOICE=DEF_CHOICE;
-  /* نماذج نطق «بزق» */
-  var BZQ=[
-    {id:'b1', t:'ابُزُقْ — ألف عادية، ضم الباء والزاي وتسكين القاف', txt:'ابُزُقْ!', pref:[/AE/i,/LY/i,/EG/i], name:/حمدان|Hamdan/i, nameLang:/AE/i, d:'ألف عادية في أوله.'},
-    {id:'b2', t:'أُبْزُقْ — تسكين الباء',                txt:'أُبْزُقْ!', pref:[/LY/i,/SA/i],  d:'فعل الأمر كما يُقال عادة: همزة مضمومة، باء ساكنة، زاي مضمومة.'},
-    {id:'b3', t:'أُبْزُغْ — بصوت صالح اليمني',            txt:'أُبْزُغْ!', pref:[/YE/i,/LY/i], name:/صالح|Saleh/i, nameLang:/YE/i, d:'بنفس طريقة «السحلوقة» المعتمدة، فتخرج القاف [ɡ] على الطريقة الليبية.'},
-    {id:'b4', t:'أُبْزُجْ — بصوت مصري',                   txt:'أُبْزُجْ!', pref:[/EG/i],        d:'الجيم المصرية [ɡ] بدل القاف.'},
-    {id:'b5', t:'بْزُقْ — بلا همزة',                      txt:'بْزُقْ!',   pref:[/AE/i,/LY/i,/SA/i], name:/حمدان|Hamdan/i, nameLang:/AE/i, d:'المعتمد: بصوت حمدان الإماراتي.'},
-    {id:'b6', t:'بَزْق! — اسماً',                         txt:'بَزْقْ!',   pref:[/SA/i,/LY/i],  d:'الكلمة اسماً لا فعلاً.'},
-    {id:'b7', t:'حروف لاتينية بصوت إنجليزي',              txt:'Obzog!',    pref:[/^en/i], en:true, d:'بلكنة إنجليزية، والـ g واضحة.'}
-  ];
-  /* المعتمد: «بْزُقْ» بصوت حمدان الإماراتي */
-  var BCHOICE=null; try{ BCHOICE=JSON.parse(localStorage.getItem('bzqVoice')||'null'); }catch(e){}
-  if(!BCHOICE) BCHOICE={id:'b5',voice:null};
+  var LINES={
+    sahlouga:[['السَّحْلُوغَا.','saleh']],
+    done2:[['تَمَّتِ السَّحْلَغَا','saleh'],['بِنَجَاحْ.','hamed']],
+    obzoq:[['بْزُقْ!','hamdan']]
+  };
   function allVoices(){ try{ return window.speechSynthesis?speechSynthesis.getVoices():[]; }catch(e){ return []; } }
-  function modelVoice(m,uri){
-    var vs=allVoices(), pool=vs.filter(function(x){ return m.en?/^en/i.test(x.lang):/^ar/i.test(x.lang); });
-    if(uri){ var f=vs.filter(function(x){ return x.voiceURI===uri; })[0]; if(f) return f; }
-    if(m.name){ var nm=pool.filter(function(x){ return m.name.test(x.name)&&m.nameLang.test(x.lang); })[0]||pool.filter(function(x){ return m.nameLang.test(x.lang); })[0]; if(nm) return nm; }
-    for(var i=0;i<m.pref.length;i++){ var h=pool.filter(function(x){ return m.pref[i].test(x.lang); })[0]; if(h) return h; }
-    return pool[0]||null;
+  function pickVoice(k){
+    var spec=VOX[k], ar=allVoices().filter(function(x){ return /^ar/i.test(x.lang); });
+    var v=ar.filter(function(x){ return spec.name.test(x.name)&&spec.lang.test(x.lang); })[0]||ar.filter(function(x){ return spec.lang.test(x.lang); })[0];
+    for(var i=0;!v&&i<spec.pref.length;i++) v=ar.filter(function(x){ return spec.pref[i].test(x.lang); })[0];
+    return v||ar[0]||null;
   }
-  function speak(text,v,cb){
-    var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
+  /* تشغيل تسجيل مدمج */
+  var BUF={};
+  function playClip(key,cb){
+    var c=ctx(); if(!c){ cb(); return; }
+    var go=function(b){ var src=c.createBufferSource(); src.buffer=b; src.connect(c.destination); duck(true); src.onended=function(){ duck(false); cb(); }; src.start(); };
+    if(BUF[key]){ go(BUF[key]); return; }
     try{
-      var u=new SpeechSynthesisUtterance(text); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
-      var wd=null, end=function(){ clearTimeout(wd); duck(false); fin(); };
-      u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); };
-      u.onend=end; u.onerror=end; speechSynthesis.speak(u); wd=setTimeout(end,4500);
-    }catch(e){ fin(); }
+      var bin=atob(CLIPS[key].split(',')[1]), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      c.decodeAudioData(u8.buffer,function(b){ BUF[key]=b; go(b); },function(){ cb(); });
+    }catch(e){ cb(); }
   }
-  /* أصوات تنطق الجيم [ɡ] (مصري، يمني، سوداني): تُنطق بها «السحلڨا» فقط، و«بنجاح» بصوت فصيح */
-  var G_LANG=/EG|YE|SD/i;
-  var MALE=/Hamed|Omar|Fahed|Rami|Moaz|Hamdan|Taim|Bassel|Shakir|Jamal|Ali|Abdullah|Amer|Hedi|Ismael|Laith|Naayf|Majed|Saleh|صالح|حامد|شاكر|عمر|فهد|رامي|معاذ|حمدان|تيم|باسل|جمال|علي|عبدالله|ليث|ماجد|هادي|عامر/i;
-  function fushaVoice(like){
-    var ar=allVoices().filter(function(x){ return /^ar/i.test(x.lang)&&!G_LANG.test(x.lang); });
-    var order=[/SA/i,/AE|KW|QA|BH|OM/i,/JO|LB|SY|PS/i,/LY/i,/TN|DZ|MA/i,/IQ/i,/./];
-    var male=like&&MALE.test(like.name);
-    for(var i=0;i<order.length;i++){
-      var c=ar.filter(function(x){ return order[i].test(x.lang); });
-      var pick=(male?c.filter(function(x){ return MALE.test(x.name); })[0]:null)||c[0];
-      if(pick) return pick;
-    }
-    return null;
-  }
-  function sayDone2(g,v,fin,phrase){
-    if(phrase){ speak(phrase,v,fin); return; }
-    var head='تَمَّتِ السَّحْلَ'+g+'َا', tail='بِنَجَاحْ.';
-    var fv=G_LANG.test(v.lang)?fushaVoice(v):null;
-    if(!fv){ speak(DONE2(g),v,fin); return; }
-    /* الجزآن يُوضعان في طابور النطق معاً حتى يبدأ الثاني فور انتهاء الأول بلا فاصل */
-    var done=false, wd=null, end=function(){ if(done) return; done=true; clearTimeout(wd); duck(false); fin(); };
-    try{
-      var mk=function(t,vv){ var u=new SpeechSynthesisUtterance(t); u.voice=vv; u.lang=vv.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
-        u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); }; return u; };
-      var u1=mk(head,v), u2=mk(tail,fv);
-      u1.onerror=end; u2.onend=end; u2.onerror=end;
-      speechSynthesis.speak(u1); speechSynthesis.speak(u2); wd=setTimeout(end,4500);
-    }catch(e){ end(); }
-  }
+  /* نطق الأجزاء في طابور واحد حتى لا يكون بينها فاصل */
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
+    if(!on){ fin(); return; }
+    if(CLIPS[key]){ playClip(key,fin); return; }
+    var wd=null, end=function(){ if(done) return; clearTimeout(wd); duck(false); fin(); };
     try{
-      if((key==='sahlouga'||key==='done2')&&CHOICE&&CHOICE.id!=='old'&&on){
-        var m=MODELS.filter(function(x){ return x.id===CHOICE.id; })[0], cv=m&&modelVoice(m,CHOICE.voice);
-        if(cv){ if(key==='done2') sayDone2(m.g,cv,fin,m.phrase); else speak(m.txt,cv,fin); return; }
-      }
-      if(key==='obzoq'&&BCHOICE&&on){
-        var bm=BZQ.filter(function(x){ return x.id===BCHOICE.id; })[0], bv=bm&&modelVoice(bm,BCHOICE.voice);
-        if(bv){ speak(bm.txt,bv,fin); return; }
-      }
-      var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
-      if(key==='done2'){ sayDone2(/EG/i.test(v.lang)?'ج':'ق',v,fin); return; }
-      speak(WORDS[key](v),v,fin);
-    }catch(e){ fin(); }
+      if(!window.speechSynthesis){ setTimeout(end,500); return; }
+      var parts=LINES[key].map(function(p){ return [p[0],pickVoice(p[1])]; });
+      if(!parts[0][1]){ setTimeout(end,600); return; }
+      parts.forEach(function(p,i){
+        var v=p[1]||parts[0][1], u=new SpeechSynthesisUtterance(p[0]); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
+        u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); };
+        u.onerror=end; if(i===parts.length-1) u.onend=end;
+        speechSynthesis.speak(u);
+      });
+      wd=setTimeout(end,4500);
+    }catch(e){ end(); }
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
   /* done: يُستدعى عند انتهاء أصوات المشهد وكلامه بالكامل */
@@ -705,45 +638,7 @@ var SFX=(function(){
   ['pointerdown','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){ ctx(); },{once:true,capture:true}); });
   document.addEventListener('DOMContentLoaded',label);
   function unlock(cb){ var c=ctx(); if(!c){ cb(false); return; } if(c.state==='running'){ cb(true); return; } c.resume().then(function(){ cb(c.state==='running'); },function(){ cb(false); }); setTimeout(function(){ cb(c.state==='running'); cb=function(){}; },400); }
-  /* نافذة اختيار النطق */
-  function esc(x){ return String(x).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function renderVoices(){
-    var box=document.getElementById('vdList'); if(!box) return;
-    var vs=allVoices(), ar=vs.filter(function(x){ return /^ar/i.test(x.lang); }), en=vs.filter(function(x){ return /^en/i.test(x.lang); });
-    document.getElementById('vdNote').innerHTML=!window.speechSynthesis?'متصفحك لا يدعم النطق الآلي.':
-      (ar.length?'الأصوات العربية في جهازك ('+ar.length+'): '+esc(ar.map(function(x){ return x.lang; }).filter(function(x,i,a){ return a.indexOf(x)===i; }).join('، ')):'لا يوجد في جهازك صوت عربي للنطق. متصفح Edge يضم أصواتاً عربية بعدة لهجات.');
-    var card=function(list,ch){ return function(m){
-      var pool=m.en?en:ar, sel=ch?ch.id===m.id:(list==='b'&&m.id==='b1'), dv=modelVoice(m,sel&&ch?ch.voice:null);
-      var opts=pool.map(function(x){ return '<option value="'+esc(x.voiceURI)+'"'+(dv&&dv.voiceURI===x.voiceURI?' selected':'')+'>'+esc(x.name+' — '+x.lang)+'</option>'; }).join('');
-      return '<div class="vd-card'+(sel?' on':'')+'" data-list="'+list+'" data-id="'+m.id+'"><div class="vd-h"><b>'+esc(m.t)+'</b>'+(sel?'<span class="vd-tag">المعتمد</span>':'')+'</div>'+
-        '<div class="vd-w" dir="auto">'+esc(m.txt.replace(/[.!]$/,''))+'</div><p>'+esc(m.d)+'</p>'+
-        '<div class="vd-row"><select aria-label="الصوت"'+(pool.length?'':' disabled')+'>'+(opts||'<option>لا يوجد صوت مناسب</option>')+'</select>'+
-        '<button class="btn" data-act="play"'+(pool.length?'':' disabled')+'>▶ استماع</button><button class="btn solid" data-act="pick"'+(pool.length?'':' disabled')+'>اعتماد</button></div></div>';
-    }; };
-    document.getElementById('vdList2').innerHTML=BZQ.map(card('b',BCHOICE)).join('');
-    box.innerHTML=MODELS.map(card('s',CHOICE)).join('')+'<div class="vd-card'+(CHOICE.id==='old'?' on':'')+'"><div class="vd-h"><b>النظام الأول</b>'+(CHOICE.id==='old'?'<span class="vd-tag">المعتمد</span>':'')+'</div><p>تختار الأداة الصوت الليبي ثم المصري تلقائياً.</p><div class="vd-row"><button class="btn" data-act="old">اعتماد</button><button class="btn" data-act="def">رجوع إلى المعتمد الأصلي (الغين – صالح)</button></div></div>';
-  }
-  function dlgClick(e){
-    var b=e.target.closest('button[data-act]'); if(!b) return;
-    var card=b.closest('.vd-card'), id=card.getAttribute('data-id'), isB=card.getAttribute('data-list')==='b', m=(isB?BZQ:MODELS).filter(function(x){ return x.id===id; })[0];
-    var sel=card.querySelector('select'), v=m&&modelVoice(m,sel&&sel.value);
-    var act=b.getAttribute('data-act');
-    if(act==='def'){ CHOICE=DEF_CHOICE; try{ localStorage.removeItem('sahVoice'); }catch(e){} renderVoices(); return; }
-    if(act==='old'){ CHOICE={id:'old'}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); return; }
-    if(!v) return;
-    if(act==='play'){ try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
-    if(act==='pick'&&isB){ BCHOICE={id:m.id,voice:v.voiceURI}; try{ localStorage.setItem('bzqVoice',JSON.stringify(BCHOICE)); }catch(e){} renderVoices(); try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); return; }
-    if(act==='pick'){ CHOICE={id:m.id,voice:v.voiceURI}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
-  }
-  function openDlg(){
-    var d=document.getElementById('voiceDlg'); if(!d) return;
-    d.hidden=false; renderVoices();
-    if(!d._w){ d._w=1; d.addEventListener('click',function(e){ if(e.target===d) closeDlg(); else dlgClick(e); });
-      try{ speechSynthesis.addEventListener('voiceschanged',function(){ if(!d.hidden) renderVoices(); }); }catch(e){} }
-  }
-  function closeDlg(){ var d=document.getElementById('voiceDlg'); if(d) d.hidden=true; try{ speechSynthesis.cancel(); }catch(e){} }
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeDlg(); });
-  return { openVoices:openDlg, closeVoices:closeDlg, play:play, unlock:function(cb){ var once=false; unlock(function(r){ if(!once){ once=true; cb(r); } }); }, toggle:function(){ on=!on; try{ localStorage.setItem('sfx',on?'on':'off'); }catch(e){} if(!on&&C) C.suspend(); else ctx(); label(); }, get on(){ return on; } };
+  return { play:play, unlock:function(cb){ var once=false; unlock(function(r){ if(!once){ once=true; cb(r); } }); }, toggle:function(){ on=!on; try{ localStorage.setItem('sfx',on?'on':'off'); }catch(e){} if(!on&&C) C.suspend(); else ctx(); label(); }, get on(){ return on; } };
 })();
 (function(){
   var sp=document.getElementById('splash'), T=[];
@@ -826,7 +721,6 @@ var SFX=(function(){
         <button class="btn" id="btnChart" style="display:none" onclick="closeMenu();document.getElementById('chartInput').click()">دليل الحسابات</button>
         <button class="btn" id="btnClose" style="display:none" onclick="closeMenu();document.getElementById('closeInput').click()" title="استبدال دليل حسابات الإقفال المستخدم في قيد الإقفال">دليل الإقفال</button>
         <button class="btn" id="btnSfx" onclick="closeMenu();SFX.toggle()">الأصوات: تشغيل</button>
-        <button class="btn" id="btnVoice" onclick="closeMenu();SFX.openVoices()">اختيار النطق…</button>
         <hr>
         <button class="btn" id="btnReset" style="display:none" onclick="location.reload()">بدء تسوية جديدة</button>
       </div>
@@ -3656,16 +3550,5 @@ function exportExcel0(outFmt){
 }
 
 </script>
-<div class="vdlg" id="voiceDlg" hidden role="dialog" aria-modal="true" aria-labelledby="vdTitle">
-  <div class="vd-box">
-    <div class="vd-top"><h2 id="vdTitle">نماذج النطق</h2><button class="btn" onclick="SFX.closeVoices()" aria-label="إغلاق">✕</button></div>
-    <p class="vd-intro">حرف <b>ڨ</b> (القاف المثلثة أو المغلّظة) يُنطق كالجيم المصرية <b dir="ltr">[ɡ]</b>، مثل «ڨابس» و«ڨفصة». القارئ الآلي لا يعرف هذا الحرف في أغلب الأجهزة، فهذه طرق كتابة مختلفة تقرّبه. استمع إلى كل نموذج واعتمد الأوضح؛ يُستخدم المعتمد في كل المشاهد.</p>
-    <p class="vd-note" id="vdNote"></p>
-    <h3 class="vd-sec">نطق «السحلوقة»</h3>
-    <div id="vdList"></div>
-    <h3 class="vd-sec">نطق «بزق» في مشهد التصدير</h3>
-    <div id="vdList2"></div>
-  </div>
-</div>
 </body>
 </html>
