@@ -628,18 +628,37 @@ var SFX=(function(){
       u.onend=end; u.onerror=end; speechSynthesis.speak(u); wd=setTimeout(end,4500);
     }catch(e){ fin(); }
   }
+  /* أصوات تنطق الجيم [ɡ] (مصري، يمني، سوداني): تُنطق بها «السحلڨا» فقط، و«بنجاح» بصوت فصيح */
+  var G_LANG=/EG|YE|SD/i;
+  var MALE=/Hamed|Omar|Fahed|Rami|Moaz|Hamdan|Taim|Bassel|Shakir|Jamal|Ali|Abdullah|Amer|Hedi|Ismael|Laith|Naayf|Majed|Saleh|صالح|حامد|شاكر|عمر|فهد|رامي|معاذ|حمدان|تيم|باسل|جمال|علي|عبدالله|ليث|ماجد|هادي|عامر/i;
+  function fushaVoice(like){
+    var ar=allVoices().filter(function(x){ return /^ar/i.test(x.lang)&&!G_LANG.test(x.lang); });
+    var order=[/SA/i,/AE|KW|QA|BH|OM/i,/JO|LB|SY|PS/i,/LY/i,/TN|DZ|MA/i,/IQ/i,/./];
+    var male=like&&MALE.test(like.name);
+    for(var i=0;i<order.length;i++){
+      var c=ar.filter(function(x){ return order[i].test(x.lang); });
+      var pick=(male?c.filter(function(x){ return MALE.test(x.name); })[0]:null)||c[0];
+      if(pick) return pick;
+    }
+    return null;
+  }
+  function sayDone2(g,v,fin,phrase){
+    if(phrase){ speak(phrase,v,fin); return; }
+    var head='تَمَّتِ السَّحْلَ'+g+'َا', tail='بِنَجَاحْ.';
+    var fv=G_LANG.test(v.lang)?fushaVoice(v):null;
+    if(!fv){ speak(DONE2(g),v,fin); return; }
+    speak(head+'،',v,function(){ speak(tail,fv,fin); });
+  }
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
       if((key==='sahlouga'||key==='done2')&&CHOICE&&CHOICE.id!=='old'&&on){
         var m=MODELS.filter(function(x){ return x.id===CHOICE.id; })[0], cv=m&&modelVoice(m,CHOICE.voice);
-        if(cv){ speak(key==='done2'?(m.phrase||DONE2(m.g)):m.txt,cv,fin); return; }
+        if(cv){ if(key==='done2') sayDone2(m.g,cv,fin,m.phrase); else speak(m.txt,cv,fin); return; }
       }
       var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
-      var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
-      var wd=null, end=function(){ clearTimeout(wd); duck(false); fin(); };
-      u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); };
-      u.onend=end; u.onerror=end; speechSynthesis.speak(u); wd=setTimeout(end,4500);
+      if(key==='done2'){ sayDone2(/EG/i.test(v.lang)?'ج':'ق',v,fin); return; }
+      speak(WORDS[key](v),v,fin);
     }catch(e){ fin(); }
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
