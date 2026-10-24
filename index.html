@@ -562,22 +562,35 @@ var SFX=(function(){
     },
     spit:function(t){ tone(t,'square',220,90,0.25,0.05); nz(t+0.03,'bandpass',3200,1.4,0.55,0.28,0.01); nz(t+0.38,'lowpass',600,1,0.5,0.12); }
   };
-  function say(txt,delay){
+  /* النطق: يُفضَّل الصوت الليبي ثم المصري (ينطق الجيم «ڨ») ثم أي صوت عربي */
+  function voice(){
     try{
-      if(!on||!window.speechSynthesis) return;
-      var v=speechSynthesis.getVoices().filter(function(x){ return /^ar/i.test(x.lang); })[0];
-      if(!v) return;
-      setTimeout(function(){ var u=new SpeechSynthesisUtterance(txt); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.6; speechSynthesis.speak(u); },delay*1000);
-    }catch(e){}
+      if(!window.speechSynthesis) return null;
+      var vs=speechSynthesis.getVoices().filter(function(x){ return /^ar/i.test(x.lang); });
+      return vs.filter(function(x){ return /LY/i.test(x.lang); })[0]||vs.filter(function(x){ return /EG/i.test(x.lang); })[0]||vs[0]||null;
+    }catch(e){ return null; }
+  }
+  var WORDS={
+    sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'سَّحْلُوجَة':'سَّحْلُوقَة'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
+    obzoq:function(){ return 'أُبُزُقْ'; }                                              /* ضم كل الحروف مع تسكين القاف */
+  };
+  function say(key,cb){
+    var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
+    try{
+      var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
+      var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.8; u.pitch=0.55; u.volume=1;
+      u.onend=fin; u.onerror=fin; speechSynthesis.speak(u); setTimeout(fin,2500);
+    }catch(e){ fin(); }
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
   function play(scene){
     var c=ctx(); if(!c||c.state!=='running'&&scene==='intro') return;
-    var t=c.currentTime+0.03;
+    try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+    var t=c.currentTime+0.03, now=function(){ return c.currentTime+0.02; };
     try{
-      if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); }
-      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); S.laugh(t+0.4,12); }
-      else if(scene==='bzq'){ S.thud(t); S.coins(t); S.spit(t+0.4); say('بزق',0.45); S.laugh(t+1.15,10,150); }
+      if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); setTimeout(function(){ say('sahlouga'); },2150); }
+      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('sahlouga',function(){ S.laugh(now(),12); }); }
+      else if(scene==='bzq'){ S.thud(t); S.coins(t); say('sahlouga',function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); }); },300); }); }
     }catch(e){ console.warn(e); }
   }
   try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
@@ -607,7 +620,7 @@ var SFX=(function(){
     if(reduce) sp.classList.add('p3');
     else T.push(setTimeout(function(){ sp.classList.add('p3'); },350));
     SFX.play(kind);
-    T.push(setTimeout(window.hideSplash,kind==='bzq'?3800:4200));
+    T.push(setTimeout(window.hideSplash,kind==='bzq'?5200:4500));
   };
   SFX.play('intro');
   T.push(setTimeout(window.hideSplash,reduce?2500:3000));
