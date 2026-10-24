@@ -600,15 +600,19 @@ var SFX=(function(){
     {id:'eg',  t:'جيم مصرية بصوت مصري',       txt:'السَّحْلُوجَا.', pref:[/EG/i],            d:'الصوت المصري ينطق الجيم [ɡ]، وهو الأقرب غالباً إلى «ڨ».'},
     {id:'q3',  t:'القاف المثلثة «ڨ» بصوت مغاربي', txt:'السَّحْلُوڨَا.', pref:[/TN|DZ|MA/i,/LY/i], d:'الحرف نفسه كما يُكتب في تونس والجزائر، بصوت تونسي أو جزائري أو مغربي إن وُجد.'},
     {id:'gaf', t:'الكاف الفارسية «گ»',          txt:'السَّحْلُوگَا.', pref:[/IQ|SA|AE|KW|LY/i], d:'تُستعمل «گ» للصوت [ɡ] في العراق والخليج؛ بعض الأصوات تنطقها صحيحة.'},
-    {id:'ghn', t:'الغين «غ»',                    txt:'السَّحْلُوغَا.', pref:[/LY/i,/SA|AE/i],    d:'كتابة شائعة لصوت [ɡ] في بعض الترجمات، ونطقها أقرب إلى الغين.'},
+    {id:'ghn', t:'الغين «غ»',                    txt:'السَّحْلُوغَا.', pref:[/YE/i,/LY/i,/SA|AE/i], name:/صالح|Saleh/i,    d:'كتابة شائعة لصوت [ɡ] في بعض الترجمات، ونطقها أقرب إلى الغين.'},
     {id:'lat', t:'حروف لاتينية بصوت إنجليزي',    txt:'Sahh-loo-gah.',  pref:[/^en/i], en:true,   d:'يخرج حرف [ɡ] واضحاً لكن بلكنة إنجليزية.'},
     {id:'q',   t:'قاف فصحى «ق»',                 txt:'السَّحْلُوقَا.', pref:[/LY/i,/EG/i],       d:'النطق الفصيح بالقاف [q]، للمقارنة.'}
   ];
+  /* المعتمد: الغين بصوت «صالح» اليمني (Microsoft Online Natural) ما لم يختر المستخدم غيره */
+  var DEF_CHOICE={id:'ghn',voice:null};
   var CHOICE=null; try{ CHOICE=JSON.parse(localStorage.getItem('sahVoice')||'null'); }catch(e){}
+  if(!CHOICE) CHOICE=DEF_CHOICE;
   function allVoices(){ try{ return window.speechSynthesis?speechSynthesis.getVoices():[]; }catch(e){ return []; } }
   function modelVoice(m,uri){
     var vs=allVoices(), pool=vs.filter(function(x){ return m.en?/^en/i.test(x.lang):/^ar/i.test(x.lang); });
     if(uri){ var f=vs.filter(function(x){ return x.voiceURI===uri; })[0]; if(f) return f; }
+    if(m.name){ var nm=pool.filter(function(x){ return m.name.test(x.name)&&/YE/i.test(x.lang); })[0]||pool.filter(function(x){ return /YE/i.test(x.lang); })[0]; if(nm) return nm; }
     for(var i=0;i<m.pref.length;i++){ var h=pool.filter(function(x){ return m.pref[i].test(x.lang); })[0]; if(h) return h; }
     return pool[0]||null;
   }
@@ -623,7 +627,7 @@ var SFX=(function(){
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
-      if(key==='sahlouga'&&CHOICE&&on){
+      if(key==='sahlouga'&&CHOICE&&CHOICE.id!=='old'&&on){
         var m=MODELS.filter(function(x){ return x.id===CHOICE.id; })[0], cv=m&&modelVoice(m,CHOICE.voice);
         if(cv){ speak(m.txt,cv,fin); return; }
       }
@@ -663,14 +667,15 @@ var SFX=(function(){
         '<div class="vd-w" dir="auto">'+esc(m.txt.replace(/\.$/,''))+'</div><p>'+esc(m.d)+'</p>'+
         '<div class="vd-row"><select aria-label="الصوت"'+(pool.length?'':' disabled')+'>'+(opts||'<option>لا يوجد صوت مناسب</option>')+'</select>'+
         '<button class="btn" data-act="play"'+(pool.length?'':' disabled')+'>▶ استماع</button><button class="btn solid" data-act="pick"'+(pool.length?'':' disabled')+'>اعتماد</button></div></div>';
-    }).join('')+'<div class="vd-card'+(!CHOICE?' on':'')+'"><div class="vd-h"><b>الإعداد الافتراضي</b>'+(!CHOICE?'<span class="vd-tag">المعتمد</span>':'')+'</div><p>تختار الأداة الصوت الليبي ثم المصري تلقائياً.</p><div class="vd-row"><button class="btn" data-act="def">اعتماد الافتراضي</button></div></div>';
+    }).join('')+'<div class="vd-card'+(CHOICE.id==='old'?' on':'')+'"><div class="vd-h"><b>النظام الأول</b>'+(CHOICE.id==='old'?'<span class="vd-tag">المعتمد</span>':'')+'</div><p>تختار الأداة الصوت الليبي ثم المصري تلقائياً.</p><div class="vd-row"><button class="btn" data-act="old">اعتماد</button><button class="btn" data-act="def">رجوع إلى المعتمد الأصلي (الغين – صالح)</button></div></div>';
   }
   function dlgClick(e){
     var b=e.target.closest('button[data-act]'); if(!b) return;
     var card=b.closest('.vd-card'), id=card.getAttribute('data-id'), m=MODELS.filter(function(x){ return x.id===id; })[0];
     var sel=card.querySelector('select'), v=m&&modelVoice(m,sel&&sel.value);
     var act=b.getAttribute('data-act');
-    if(act==='def'){ CHOICE=null; try{ localStorage.removeItem('sahVoice'); }catch(e){} renderVoices(); return; }
+    if(act==='def'){ CHOICE=DEF_CHOICE; try{ localStorage.removeItem('sahVoice'); }catch(e){} renderVoices(); return; }
+    if(act==='old'){ CHOICE={id:'old'}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); return; }
     if(!v) return;
     if(act==='play'){ try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
     if(act==='pick'){ CHOICE={id:m.id,voice:v.voiceURI}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
