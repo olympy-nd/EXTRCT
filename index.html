@@ -284,6 +284,13 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 .splash svg{width:min(96vw,860px); height:auto; max-height:70vh;}
 .splash h1{font-size:clamp(24px,5vw,40px); font-weight:700; text-align:center; text-wrap:balance; line-height:1.3;}
 .splash p{font-size:clamp(15px,3vw,20px); color:#F2C14E; font-weight:600; letter-spacing:.5px;}
+.splash #ph2{opacity:0; transition:opacity .25s;}
+.splash #ph1{transition:opacity .2s;}
+.splash.p2 #ph1{opacity:0;}
+.splash.p2 #ph2{opacity:1;}
+.splash #bub{transform:scale(0); transform-box:fill-box; transform-origin:85% 100%; transition:transform .4s cubic-bezier(.3,1.6,.5,1);}
+.splash.p3 #bub{transform:scale(1);}
+@media (prefers-reduced-motion:reduce){ .splash #ph1,.splash #ph2,.splash #bub{transition:none;} }
 .splash small{position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); color:#7F97AE; font-size:12px;}
 @media (prefers-reduced-motion:reduce){ .splash{transition:none;} }
 </style>
@@ -294,6 +301,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 <svg viewBox="-10 -95 700 475" aria-hidden="true">
   <!-- الأرض -->
   <ellipse cx="340" cy="352" rx="330" ry="15" fill="#0A1A2A"/>
+  <g id="ph1">
   <!-- المصرف -->
   <g>
     <animateTransform attributeName="transform" type="translate" dur="0.8s" repeatCount="indefinite"
@@ -354,6 +362,11 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
     <path d="M308 162 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10" fill="#FFFFFF" stroke-width="2"/>
     <path d="M314 178 l6 -9 l6 9 l6 -9 l6 9 l6 -9 l6 9 l6 -9 l6 9 l6 -9" fill="#FFFFFF" stroke-width="2"/>
     <circle cx="300" cy="146" r="4" fill="#1E4D27" stroke="none"/>
+    <!-- العين الثانية -->
+    <circle cx="386" cy="131" r="15" fill="#3F8F4A"/>
+    <circle cx="386" cy="131" r="9.5" fill="#FFFFFF" stroke-width="3"/>
+    <circle cx="382" cy="132" r="4.5" fill="#16324F" stroke="none"/>
+    <path d="M372 117 l24 6" fill="none" stroke-width="5"/>
     <!-- العين -->
     <circle cx="420" cy="122" r="20" fill="#3F8F4A"/>
     <circle cx="420" cy="122" r="13" fill="#FFFFFF" stroke-width="3"/>
@@ -385,6 +398,103 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
     <circle cx="428" cy="228" r="14" fill="#3F8F4A" stroke="#1E4D27" stroke-width="4"/>
   </g>
   </g>
+  </g>
+  <!-- المشهد الثاني: المصرف محطّم والتمساح يضحك -->
+  <g id="ph2">
+    <g>
+      <rect x="40" y="318" width="250" height="22" rx="2" fill="#C9D4DF"/>
+      <rect x="52" y="304" width="226" height="16" rx="2" fill="#DCE4EC"/>
+      <g fill="#E8EDF2" stroke="#B5C3D1" stroke-width="2" stroke-linejoin="round">
+        <polygon points="78,304 78,262 86,254 92,266 104,256 104,304"/>
+        <polygon points="124,304 124,238 131,246 140,232 150,244 150,304"/>
+        <polygon points="180,304 180,276 190,268 198,280 206,272 206,304"/>
+        <polygon points="226,304 226,290 236,282 244,292 252,284 252,304"/>
+        <polygon points="56,302 142,258 176,298" transform="rotate(-6 116 280)"/>
+      </g>
+      <g transform="rotate(-16 214 316)">
+        <rect x="176" y="304" width="78" height="20" fill="#DCE4EC" stroke="#B5C3D1" stroke-width="2"/>
+        <text x="215" y="319" text-anchor="middle" font-size="14" font-weight="700" fill="#16324F" font-family="Arial">مصرف</text>
+      </g>
+      <g fill="#C9D4DF" stroke="#9FB0C2" stroke-width="1.5">
+        <polygon points="20,340 34,330 42,341"/><polygon points="292,341 304,328 316,341"/>
+        <polygon points="262,333 276,326 280,340 266,342"/><polygon points="8,334 18,326 24,338"/>
+      </g>
+      <circle cx="318" cy="331" r="11" fill="#F2C14E" stroke="#B88A1E" stroke-width="3"/>
+      <text x="318" y="336" text-anchor="middle" font-size="13" font-weight="700" fill="#8A6212" font-family="Arial">$</text>
+      <g fill="#8899AA">
+        <circle cx="110" cy="250" r="16" opacity="0.35"><animate attributeName="r" values="10;26;10" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.45;0.05;0.45" dur="1.6s" repeatCount="indefinite"/></circle>
+        <circle cx="196" cy="262" r="12" opacity="0.3"><animate attributeName="r" values="8;22;8" dur="1.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.4;0.05;0.4" dur="1.9s" repeatCount="indefinite"/></circle>
+      </g>
+    </g>
+    <g transform="translate(440 342) scale(1.32) translate(-440 -342)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" values="-2 445 342;2 445 342;-2 445 342" dur="0.6s" repeatCount="indefinite"/>
+        <g stroke="#1E4D27" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <!-- الذيل -->
+          <path d="M500 300 C 560 300, 600 330, 612 350 C 585 346, 540 338, 495 330 Z" fill="#3F8F4A"/>
+          <path d="M540 312 l8 -10 l6 12 M570 322 l8 -9 l5 12" fill="none"/>
+          <!-- المطرقة مستندة على الأرض -->
+          <path d="M333 302 L 360 246" stroke="#5C3A19" stroke-width="13"/>
+          <path d="M333 302 L 360 246" stroke="#8B5A2B" stroke-width="8"/>
+          <rect x="298" y="300" width="70" height="40" rx="8" fill="#9AA5B1" stroke="#5E6A76"/>
+          <!-- الساقان والقدمان -->
+          <path d="M415 300 v38 M476 300 v38" fill="none" stroke="#3F8F4A" stroke-width="18"/>
+          <ellipse cx="412" cy="342" rx="17" ry="7" fill="#3F8F4A"/>
+          <ellipse cx="479" cy="342" rx="17" ry="7" fill="#3F8F4A"/>
+          <!-- الجسم -->
+          <ellipse cx="445" cy="250" rx="68" ry="82" fill="#3F8F4A"/>
+          <ellipse cx="445" cy="262" rx="42" ry="60" fill="#A7D08C" stroke-width="3"/>
+          <path d="M422 230 h46 M416 252 h58 M418 274 h54 M424 296 h42" fill="none" stroke="#6FA85A" stroke-width="3"/>
+          <!-- الذراعان: يد على المطرقة ويد على البطن من شدة الضحك -->
+          <path d="M392 212 C 374 224, 364 236, 360 246" fill="none" stroke="#3F8F4A" stroke-width="20"/>
+          <circle cx="360" cy="247" r="13" fill="#3F8F4A"/>
+          <path d="M500 212 C 516 236, 500 262, 474 268" fill="none" stroke="#3F8F4A" stroke-width="20"/>
+          <circle cx="472" cy="268" r="13" fill="#3F8F4A"/>
+        </g>
+        <!-- الرأس يهتز مع الضحك -->
+        <g stroke="#1E4D27" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="0.3s" repeatCount="indefinite"/>
+          <ellipse cx="445" cy="156" rx="82" ry="50" fill="#3F8F4A"/>
+          <!-- الفم مفتوح على آخره -->
+          <path d="M382 162 Q 445 150 508 162 Q 503 222 445 230 Q 387 222 382 162 Z" fill="#7A1F1F"/>
+          <ellipse cx="445" cy="212" rx="30" ry="12" fill="#E07A8A" stroke="none"/>
+          <path d="M388 164 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10 l7 -10 l7 10" fill="#FFFFFF" stroke-width="2"/>
+          <path d="M408 222 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8" fill="#FFFFFF" stroke-width="2"/>
+          <ellipse cx="430" cy="136" rx="4" ry="3" fill="#1E4D27" stroke="none"/>
+          <ellipse cx="460" cy="136" rx="4" ry="3" fill="#1E4D27" stroke="none"/>
+          <!-- العينان تنظران إليك -->
+          <circle cx="410" cy="106" r="21" fill="#3F8F4A"/>
+          <circle cx="480" cy="106" r="21" fill="#3F8F4A"/>
+          <circle cx="410" cy="106" r="14" fill="#FFFFFF" stroke-width="3"/>
+          <circle cx="480" cy="106" r="14" fill="#FFFFFF" stroke-width="3"/>
+          <circle cx="410" cy="109" r="6" fill="#16324F" stroke="none"/>
+          <circle cx="480" cy="109" r="6" fill="#16324F" stroke="none"/>
+          <path d="M392 82 q 18 -10 36 0 M462 82 q 18 -10 36 0" fill="none" stroke-width="5"/>
+          <!-- النظارة -->
+          <g fill="none">
+            <path d="M388 106 L 368 116 M502 106 L 522 116" stroke="#16324F" stroke-width="7"/>
+            <path d="M388 106 L 368 116 M502 106 L 522 116" stroke="#E9B949" stroke-width="4"/>
+            <path d="M432 104 Q 445 96 458 104" stroke="#16324F" stroke-width="7"/>
+            <path d="M432 104 Q 445 96 458 104" stroke="#E9B949" stroke-width="4"/>
+            <circle cx="410" cy="106" r="23" fill="#CFE6FF" fill-opacity="0.3" stroke="#16324F" stroke-width="8"/>
+            <circle cx="480" cy="106" r="23" fill="#CFE6FF" fill-opacity="0.3" stroke="#16324F" stroke-width="8"/>
+            <circle cx="410" cy="106" r="23" stroke="#E9B949" stroke-width="4.5"/>
+            <circle cx="480" cy="106" r="23" stroke="#E9B949" stroke-width="4.5"/>
+            <path d="M396 96 a15 15 0 0 1 11 -6 M466 96 a15 15 0 0 1 11 -6" stroke="#FFFFFF" stroke-width="3.5" stroke-opacity="0.9"/>
+          </g>
+          <!-- خطوط الضحك -->
+          <path d="M352 140 l-14 -6 M350 160 l-16 0 M538 140 l14 -6 M540 160 l16 0" fill="none" stroke="#F2C14E" stroke-width="4"/>
+        </g>
+      </g>
+    </g>
+  </g>
+  <!-- فقاعة الكلام -->
+  <g id="bub">
+    <rect x="10" y="-90" width="340" height="86" rx="20" fill="#FFFFFF"/>
+    <polygon points="276,-8 322,-8 352,66" fill="#FFFFFF"/>
+    <text x="180" y="-52" text-anchor="middle" font-size="27" font-weight="700" fill="#0F2438">تمت السحلقة بنجاح</text>
+    <text x="180" y="-18" text-anchor="middle" font-size="22" font-weight="700" fill="#B8860B">هههههههههههه</text>
+  </g>
 </svg>
 <h1>السحلوقة للتسوية المصرفية</h1>
 <p>ملوك الـ Extract</p>
@@ -393,11 +503,16 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 <script>
 (function(){
   var sp=document.getElementById('splash');
-  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){
     sp.querySelectorAll('animate,animateTransform').forEach(function(a){ a.remove(); });
+    sp.classList.add('p2','p3');
+  }else{
+    setTimeout(function(){ sp.classList.add('p2'); },2400);
+    setTimeout(function(){ sp.classList.add('p3'); },2800);
   }
   window.hideSplash=function(){ if(!sp||sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(function(){ sp.remove(); },550); };
-  setTimeout(window.hideSplash,3400);
+  setTimeout(window.hideSplash,reduce?3500:6800);
   document.addEventListener('keydown',function(){ window.hideSplash(); },{once:true});
 })();
 </script>
