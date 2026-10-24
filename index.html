@@ -530,6 +530,10 @@ var SFX=(function(){
     if(C.state==='suspended') C.resume().catch(function(){});
     return C;
   }
+  var M=null;
+  function out(){ if(!M){ M=C.createGain(); M.gain.value=1; M.connect(C.destination); } return M; }
+  /* خفض المؤثرات أثناء النطق حتى لا تغطي الكلمة */
+  function duck(d){ if(!C||!M) return; var t=C.currentTime; M.gain.cancelScheduledValues(t); M.gain.setValueAtTime(M.gain.value,t); M.gain.linearRampToValueAtTime(d?0.12:1,t+(d?0.08:0.3)); }
   function noise(){
     if(NB) return NB; var n=C.sampleRate*1.5|0; NB=C.createBuffer(1,n,C.sampleRate);
     var d=NB.getChannelData(0); for(var i=0;i<n;i++) d[i]=Math.random()*2-1; return NB;
@@ -539,11 +543,11 @@ var SFX=(function(){
     var src=C.createBufferSource(); src.buffer=noise();
     var fl=C.createBiquadFilter(); fl.type=type; fl.frequency.value=f; fl.Q.value=q||1;
     var g=C.createGain(); env(g,t,a||0.005,peak,dec);
-    src.connect(fl).connect(g).connect(C.destination); src.start(t,Math.random()*0.5); src.stop(t+(a||0.005)+dec+0.05);
+    src.connect(fl).connect(g).connect(out()); src.start(t,Math.random()*0.5); src.stop(t+(a||0.005)+dec+0.05);
   }
   function tone(t,type,f1,f2,peak,dur,a){
     var o=C.createOscillator(); o.type=type; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur);
-    var g=C.createGain(); env(g,t,a||0.005,peak,dur); o.connect(g).connect(C.destination); o.start(t); o.stop(t+dur+0.05);
+    var g=C.createGain(); env(g,t,a||0.005,peak,dur); o.connect(g).connect(out()); o.start(t); o.stop(t+dur+0.05);
   }
   var S={
     thud:function(t){ tone(t,'sine',150,38,0.9,0.35); nz(t,'lowpass',900,0.7,0.6,0.18); nz(t+0.01,'highpass',2500,0.8,0.25,0.07); },
@@ -556,7 +560,7 @@ var SFX=(function(){
         o.frequency.setValueAtTime(f*1.08,u); o.frequency.exponentialRampToValueAtTime(f*0.9,u+0.13);
         var g=C.createGain(); env(g,u,0.02,0.32,0.12);
         [[750,6],[1250,8]].forEach(function(F){ var b=C.createBiquadFilter(); b.type='bandpass'; b.frequency.value=F[0]; b.Q.value=F[1]; o.connect(b).connect(g); });
-        g.connect(C.destination); o.start(u); o.stop(u+0.2);
+        g.connect(out()); o.start(u); o.stop(u+0.2);
         nz(u,'bandpass',1800,1,0.06,0.09,0.01);
       }
     },
@@ -573,15 +577,16 @@ var SFX=(function(){
     }catch(e){ return null; }
   }
   var WORDS={
-    sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'السَّحْلُوجَة':'السَّحْلُوقَة'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
-    obzoq:function(){ return 'أُبُزُقْ'; }                                              /* ضم كل الحروف مع تسكين القاف */
+    sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'السَّحْلُوجَا.':'السَّحْلُوقَا.'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
+    obzoq:function(){ return 'أُبُزُقْ.'; }                                              /* ضم كل الحروف مع تسكين القاف */
   };
   function say(key,cb){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
       var v=on&&voice(key); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
-      var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.8; u.pitch=0.55; u.volume=1;
-      u.onend=fin; u.onerror=fin; speechSynthesis.speak(u); setTimeout(fin,2500);
+      var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
+      u.onstart=function(){ duck(true); }; var end=function(){ duck(false); fin(); };
+      u.onend=end; u.onerror=end; speechSynthesis.speak(u); setTimeout(function(){ if(!done){ duck(false); fin(); } },3000);
     }catch(e){ fin(); }
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
@@ -630,7 +635,7 @@ var SFX=(function(){
   window.splashClick=function(){ window.hideSplash(); };
   var played=SFX.on&&SFX.play('intro');
   if(!played&&SFX.on&&!reduce) SFX.unlock(function(ok){ if(ok&&!sp.hidden&&!sp.classList.contains('p2')){ played=SFX.play('intro'); } });
-  T.push(setTimeout(function(){ if(!sp.classList.contains('p2')) window.hideSplash(); },reduce?2500:3800));
+  T.push(setTimeout(function(){ if(!sp.classList.contains('p2')) window.hideSplash(); },reduce?2500:4400));
   document.addEventListener('keydown',function(){ window.hideSplash(); });
 })();
 </script>
