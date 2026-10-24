@@ -308,8 +308,6 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 @keyframes coin{0%{opacity:1;transform:translate(0,0) scale(.6)}45%{opacity:1;transform:translate(calc(var(--dx)*.6),var(--dy)) scale(1)}100%{opacity:0;transform:translate(var(--dx),40px) scale(1) rotate(540deg)}}
 @keyframes dust{0%{opacity:.75;transform:scale(.3)}100%{opacity:0;transform:scale(2.4) translateY(-14px)}}
 @media (prefers-reduced-motion:reduce){ .splash svg,.splash .flash,.splash .coin,.splash .dust{animation:none!important;} }
-.splash.gate small{color:#F2C14E; font-size:16px; font-weight:700; animation:hintp 1.2s ease-in-out infinite;}
-@keyframes hintp{50%{opacity:.45}}
 .splash small{position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); color:#7F97AE; font-size:12px;}
 @media (prefers-reduced-motion:reduce){ .splash{transition:none;} }
 </style>
@@ -628,22 +626,12 @@ var SFX=(function(){
     SFX.play(kind);
     T.push(setTimeout(window.hideSplash,kind==='bzq'?5200:4500));
   };
-  /* المتصفح يمنع الصوت قبل أول ضغطة: إن كان الصوت مفعّلاً ينتظر المشهد الأول ضغطة ثم يبدأ من أوله بالصوت */
-  var gated=false, hint=document.getElementById('spHint');
-  function restart(){
-    var svg=sp.querySelector('svg');
-    try{ svg.setCurrentTime(0); }catch(e){}
-    [svg,sp.querySelector('.flash')].forEach(function(el){ if(!el) return; el.style.animation='none'; void el.offsetWidth; el.style.animation=''; });
-  }
-  function startIntro(){
-    gated=false; sp.classList.remove('gate'); hint.textContent='اضغط للمتابعة';
-    SFX.unlock(function(){ restart(); SFX.play('intro'); T.push(setTimeout(window.hideSplash,3800)); });
-  }
-  window.splashClick=function(){ if(gated) startIntro(); else window.hideSplash(); };
-  if(SFX.on && SFX.play('intro')) T.push(setTimeout(window.hideSplash,3800));
-  else if(SFX.on){ gated=true; sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
-  else T.push(setTimeout(window.hideSplash,reduce?2500:3000));
-  document.addEventListener('keydown',function(e){ if(gated){ if(e.key!=='Escape'){ startIntro(); return; } gated=false; } window.hideSplash(); });
+  /* المشهد الأول يبدأ بالصوت مباشرة إن سمح المتصفح بالتشغيل التلقائي */
+  window.splashClick=function(){ window.hideSplash(); };
+  var played=SFX.on&&SFX.play('intro');
+  if(!played&&SFX.on&&!reduce) SFX.unlock(function(ok){ if(ok&&!sp.hidden&&!sp.classList.contains('p2')){ played=SFX.play('intro'); } });
+  T.push(setTimeout(function(){ if(!sp.classList.contains('p2')) window.hideSplash(); },reduce?2500:3800));
+  document.addEventListener('keydown',function(){ window.hideSplash(); });
 })();
 </script>
 <header class="topbar">
