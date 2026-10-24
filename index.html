@@ -699,8 +699,16 @@ var SFX=(function(){
     return ok;
   }
   window.splashClick=function(){ if(gated) startIntro(); else window.hideSplash(); };
+  /* إن سمح المتصفح بالتشغيل التلقائي (تطبيق مثبّت، أو إذن الموقع في Edge/Firefox) يبدأ الصوت مباشرة دون ضغط */
   if(SFX.on && introPlay(true)){}
-  else if(SFX.on){ gated=true; sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
+  else if(SFX.on){
+    gated=true;
+    SFX.unlock(function(ok){
+      if(!gated) return;
+      if(ok){ gated=false; restart(); introPlay(); }
+      else { sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
+    });
+  }
   else T.push(setTimeout(window.hideSplash,reduce?2500:3000));
   document.addEventListener('keydown',function(e){ if(gated){ if(e.key!=='Escape'){ startIntro(); return; } gated=false; } window.hideSplash(); });
 })();
