@@ -143,6 +143,11 @@ button,input,select{font-family:inherit;}
 .toast.bad{background:#B3261E;}
 .toast.good{background:#2F6B45;}
 .toast button{background:none; border:0; color:inherit; font-size:16px; cursor:pointer; line-height:1; padding:2px 4px; margin-inline-start:auto;}
+.diffopts{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:var(--r-m); padding:10px 14px; margin-bottom:12px; font-size:13px;}
+.diffopts .dl{color:var(--muted);}
+.dopt{display:inline-flex; align-items:center; gap:7px; cursor:pointer; color:var(--ink-2); font-weight:500;}
+.dopt input{width:16px; height:16px; accent-color:var(--ink);}
+.dopt .cnt{font-size:11px; color:var(--muted); background:var(--canvas); border-radius:10px; padding:0 7px; font-variant-numeric:tabular-nums;}
 .err{background:var(--danger-bg); color:var(--danger); border:1px solid #F1C5C1; border-radius:var(--r-s); padding:10px 14px; margin-top:12px; display:none; font-size:12.5px;}
 .err:empty{display:none!important;}
 .progress{display:none; text-align:center; color:var(--ink); font-weight:500; margin-top:10px; font-size:13px;}
@@ -1607,7 +1612,7 @@ const headRow=cols=>'<tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
 const noteRow=(n,t)=>'<tr class="noterow"><td colspan="'+n+'">'+t+'</td></tr>';
 const secRowT=(n,t)=>'<tr class="secrow"><td colspan="'+n+'">'+t+'</td></tr>';
 const headRowIn=(cols,span)=>{const pad=span-cols.length; return '<tr class="inhead">'+cols.map(c=>'<td>'+c+'</td>').join('')+(pad>0?'<td colspan="'+pad+'"></td>':'')+'</tr>';};
-const SRC_SHEETS=['bankonly','mf','ma','unf','una','qid','qida','qcl','fees'];
+const SRC_SHEETS=['bankonly','mf','ma','qid','qida','qcl','fees'];
 const tools=id=>'<div class="toolrow"><input type="search" placeholder="بحث بالمرجع أو البيان أو القيمة" oninput="filterTable(\''+id+'\', this.value)">'
   +((memoOn()&&SRC_SHEETS.indexOf(id)>=0)?('<span class="srcfilter" id="sf-'+id+'"><button class="on" onclick="filterSrc(\''+id+'\',\'all\',this)">الكل</button><button onclick="filterSrc(\''+id+'\',\'bank\',this)">كشف المصرف</button><button class="memo" onclick="filterSrc(\''+id+'\',\'memo\',this)">مذكرة التسوية</button></span>'):'')
   +'<span class="count" id="cnt-'+id+'"></span></div>';
@@ -1778,29 +1783,56 @@ function renderMatched(id,ttl,pairs,ledger,isFar){
   '<div class="sheetsub">عدد الحركات المتطابقة: '+pairs.length+' حركة – مطابقة واحد لواحد (كل حركة مصرف تقابل قيداً دفترياً واحداً) – شرط التاريخ: '+MODE_LABEL[MODE]+'</div>'+
   tools(id)+'<div class="tblbox"><table id="tbl-'+id+'">'+matchedGroupBar(isFar?'دفتر الفرع':'دفتر الادارة')+matchedHead()+matchedHTML(pairs,ledger,isFar)+'</table></div>';
 }
-function renderUnf(){
-  const bcr=R.unbCr.map(b=>({...b,note:noteBcr}));
-  return '<div class="sheettitle">الحركات غير المتطابقة بين كشف المصرف ودفتر الفرع</div>'+
-  '<div class="sheetsub">القسم (أ): حركات واردة بالمصرف بلا قيد بدفتر الفرع – القسم (ب): قيود بدفتر الفرع لم تظهر بالكشف – القسم (ج): قيود لاحقة للفترة</div>'+
-  tools('unf')+'<div class="tblbox"><table id="tbl-unf">'+
-  secRowT(8,'القسم (أ): حوالات واردة بكشف المصرف لم يُعثر لها على قيد مطابق بدفتر الفرع')+headRowIn(BCOLS(),8)+bankHTML(bcr,8)+
-  secRowT(8,'القسم (ب): قيود بدفتر الفرع لم تظهر بكشف المصرف خلال الفترة (إيداعات بالطريق / تتطلب تتبعاً)')+headRowIn(LCOLS,8)+ledgerHTML(R.unfIn)+
-  secRowT(8,'القسم (ج): قيود بدفتر الفرع بتاريخ لاحق لنهاية فترة الكشف '+E.fmtPad(ED)+' – مدرجة للحصر وخارج نطاق المطابقة')+headRowIn(LCOLS,8)+ledgerHTML(R.unfAfter)+
-  '</table></div>';
+/* إظهار الحركات التي لا مقابل لها بالدفاتر – معطّل افتراضياً، ويُفعّل لكل مصدر على حدة */
+const DIFF_SHOW={unf:{bank:false,memo:false}, una:{bank:false,memo:false}};
+const LETTERS=['أ','ب','ج','د','هـ','و'];
+const diffPick=(id,rows)=>rows.filter(b=>isMemoB(b)?(DIFF_SHOW[id].memo&&memoOn()):DIFF_SHOW[id].bank);
+function diffOpts(id, pools){
+  const nB=pools.reduce((a,r)=>a+r.filter(b=>!isMemoB(b)).length,0);
+  const nM=pools.reduce((a,r)=>a+r.filter(b=>isMemoB(b)).length,0);
+  const box=(key,lbl,n)=>'<label class="dopt"><input type="checkbox" id="dsh-'+id+'-'+key+'"'+(DIFF_SHOW[id][key]?' checked':'')
+    +' onchange="setDiffShow(\''+id+'\',\''+key+'\',this.checked)"><span>'+lbl+'</span><span class="cnt">'+n+'</span></label>';
+  return '<div class="diffopts"><span class="dl">إظهار الحركات التي لا مقابل لها بالدفتر:</span>'
+    +box('bank','حركات كشف المصرف',nB)
+    +((TREASURY&&MEMO_ROWS&&MEMO_ROWS.length)?box('memo','حركات مذكرة التسوية',nM):'')+'</div>';
 }
-function renderUna(){ NOSRC=true; try{ return renderUna0(); } finally{ NOSRC=false; } }
+function setDiffShow(id,key,val){
+  DIFF_SHOW[id][key]=!!val;
+  const d=$('sheet-'+id); if(!d) return;
+  d.innerHTML=(id==='unf'?renderUnf():renderUna());
+  filterTable(id,QF[id]||'');
+  const tab=document.querySelector('.tab[data-id="'+id+'"] .cnt'); if(tab) tab.textContent=d.querySelectorAll('table[id^="tbl-"] tr.d').length;
+}
+function withDiffSrc(id,fn){ const keep=NOSRC; NOSRC=!(DIFF_SHOW[id].memo&&memoOn()); try{ return fn(); } finally{ NOSRC=keep; } }
+function renderUnf(){ return withDiffSrc('unf',renderUnf0); }
+function renderUnf0(){
+  const on=DIFF_SHOW.unf.bank||(DIFF_SHOW.unf.memo&&memoOn());
+  const bcr=diffPick('unf',R.unbCr).map(b=>({...b,note:noteBcr}));
+  let k=0, h='';
+  if(on) h+=secRowT(8,'القسم ('+LETTERS[k++]+'): حوالات واردة لم يُعثر لها على قيد مطابق بدفتر الفرع')+headRowIn(BCOLS(),8)+bankHTML(bcr,8);
+  h+=secRowT(8,'القسم ('+LETTERS[k++]+'): قيود بدفتر الفرع لم تظهر بكشف المصرف خلال الفترة (إيداعات بالطريق / تتطلب تتبعاً)')+headRowIn(LCOLS,8)+ledgerHTML(R.unfIn);
+  h+=secRowT(8,'القسم ('+LETTERS[k++]+'): قيود بدفتر الفرع بتاريخ لاحق لنهاية فترة الكشف '+E.fmtPad(ED)+' – مدرجة للحصر وخارج نطاق المطابقة')+headRowIn(LCOLS,8)+ledgerHTML(R.unfAfter);
+  return '<div class="sheettitle">الحركات غير المتطابقة بين كشف المصرف ودفتر الفرع</div>'+
+  '<div class="sheetsub">قيود دفتر الفرع التي لم تظهر بالكشف'+(on?'، مع الحركات الواردة التي لا مقابل لها بالدفتر':'')+'</div>'+
+  diffOpts('unf',[R.unbCr])+
+  tools('unf')+'<div class="tblbox"><table id="tbl-unf">'+h+'</table></div>';
+}
+function renderUna(){ return withDiffSrc('una',renderUna0); }
 function renderUna0(){
-  /* حركات كشف المصرف وحدها – حركات مذكرة التسوية لا تظهر في هذه الورقة */
-  const out=R.unbOut.filter(b=>!isMemoB(b)).map(b=>({...b,note:noteOut}));
-  const inc=R.unbCr.filter(b=>!isMemoB(b)).map(b=>({...b,note:'حوالة واردة بالكشف بدون قيد مطابق بدفتر الادارة – تتطلب مراجعة وقيدها'}));
+  const on=DIFF_SHOW.una.bank||(DIFF_SHOW.una.memo&&memoOn());
+  const out=diffPick('una',R.unbOut).map(b=>({...b,note:noteOut}));
+  const inc=diffPick('una',R.unbCr).map(b=>({...b,note:'حوالة واردة بدون قيد مطابق بدفتر الادارة – تتطلب مراجعة وقيدها'}));
+  let k=0, h='';
+  if(on){
+    h+=secRowT(8,'القسم ('+LETTERS[k++]+'): حوالات صادرة لم يُعثر لها على قيد بدفتر الادارة – تتطلب قيود تسوية')+headRowIn(BCOLS(),8)+bankHTML(out,8);
+    h+=secRowT(8,'القسم ('+LETTERS[k++]+'): حوالات واردة لم يُعثر لها على قيد بدفتر الادارة')+headRowIn(BCOLS(),8)+bankHTML(inc,8);
+  }
+  h+=secRowT(8,'القسم ('+LETTERS[k++]+'): قيود بدفتر الادارة لم تظهر بكشف المصرف خلال الفترة')+headRowIn(LCOLS,8)+ledgerHTML(R.unaIn);
+  h+=secRowT(8,'القسم ('+LETTERS[k++]+'): قيود بدفتر الادارة بتاريخ لاحق لنهاية فترة الكشف '+E.fmtPad(ED)+' – مدرجة للحصر وخارج نطاق المطابقة')+headRowIn(LCOLS,8)+ledgerHTML(R.unaAfter);
   return '<div class="sheettitle">الحركات غير المتطابقة بين كشف المصرف ودفتر الادارة</div>'+
-  '<div class="sheetsub">القسم (أ): حوالات صادرة بلا قيد – (ب): حوالات واردة بلا قيد – (ج): قيود ادارة لم تظهر بالكشف – (د): قيود لاحقة للفترة</div>'+
-  tools('una')+'<div class="tblbox"><table id="tbl-una">'+
-  secRowT(8,'القسم (أ): حوالات صادرة من الحساب بكشف المصرف لم يُعثر لها على قيد بدفتر الادارة – تتطلب قيود تسوية')+headRowIn(BCOLS(),8)+bankHTML(out,8)+
-  secRowT(8,'القسم (ب): حوالات واردة إلى الحساب بكشف المصرف لم يُعثر لها على قيد بدفتر الادارة')+headRowIn(BCOLS(),8)+bankHTML(inc,8)+
-  secRowT(8,'القسم (ج): قيود بدفتر الادارة لم تظهر بكشف المصرف خلال الفترة')+headRowIn(LCOLS,8)+ledgerHTML(R.unaIn)+
-  secRowT(8,'القسم (د): قيود بدفتر الادارة بتاريخ لاحق لنهاية فترة الكشف '+E.fmtPad(ED)+' – مدرجة للحصر وخارج نطاق المطابقة')+headRowIn(LCOLS,8)+ledgerHTML(R.unaAfter)+
-  '</table></div>';
+  '<div class="sheetsub">قيود دفتر الادارة التي لم تظهر بالكشف'+(on?'، مع الحوالات الصادرة والواردة التي لا مقابل لها بالدفتر':'')+'</div>'+
+  diffOpts('una',[R.unbOut,R.unbCr])+
+  tools('una')+'<div class="tblbox"><table id="tbl-una">'+h+'</table></div>';
 }
 
 
@@ -2541,7 +2573,7 @@ function exportExcel0(outFmt){
   S1.blank();
   S1.section('منهجية وملاحظات المراجع',3);
   [
-   ...((TREASURY&&MEMO_ROWS.length)?['وضع التسوية: أُضيفت حركات آخر ورقة بمذكرة التسوية («'+MEMO[MEMO_IDX].sheet+'») إلى حركات كشف المصرف كحركات إضافية – المذكرة لا تحل محل الكشف. كل بند في قسم «يضاف إلى مدين الدفاتر» احتُسب حركة دائنة بالمصرف (حوالة واردة) وطُوبق مع مدين الدفاتر، وكل بند في قسم «يضاف إلى دائن الدفاتر» احتُسب حركة مدينة بالمصرف (حوالة صادرة/عمولة) وطُوبق مع دائن الدفاتر – بنفس إجراءات كشف المصرف وفي كل الأوراق. بنود «يخصم من دائن/مدين الدفاتر» بنود دفترية مستبعدة من المطابقة ومعروضة بورقة «مذكرة التسوية».']:[]),
+   ...((TREASURY&&MEMO_ROWS.length)?['وضع التسوية: أُضيفت حركات آخر ورقة بمذكرة التسوية («'+MEMO[MEMO_IDX].sheet+'») إلى حركات كشف المصرف كحركات إضافية – المذكرة لا تحل محل الكشف. كل بند في قسم «يضاف إلى مدين الدفاتر» احتُسب حركة دائنة بالمصرف (حوالة واردة) وطُوبق مع مدين الدفاتر، وكل بند في قسم «يضاف إلى دائن الدفاتر» احتُسب حركة مدينة بالمصرف (حوالة صادرة/عمولة) وطُوبق مع دائن الدفاتر – بنفس إجراءات كشف المصرف وفي كل الأوراق. بنود «يخصم من دائن/مدين الدفاتر» بنود دفترية مستبعدة من المطابقة.']:[]),
    'المطابقة تمت على مرحلتين: تطابق الرقم المرجعي مع القيمة، ثم تطابق القيمة مع تاريخ الحوالة المستخرج من عمود البيان بالدفاتر حصراً ('+MODE_LABEL[MODE]+')'+(STAR?' مع تفعيل قراءة التواريخ المفصولة بنجمة (*)':'')+'.',
    'كل حركة مصرف قوبلت بقيد دفتري واحد فقط (مطابقة واحد لواحد)، وأساس المطابقة مبيّن في عمود مستقل بكل ورقة.',
    ...(memoOn()?['تمييز المصدر: لكل ورقة عمود «المصدر» يفصل حركات كشف المصرف عن حركات مذكرة التسوية، وحركات المذكرة مرقّمة بصيغة مذ-1، مذ-2 … وخلاياها بخلفية كهرمانية، ومرجع البند داخل ملف المذكرة (الورقة والقسم ورقم الصف) مدوّن ضمن عمود أساس المطابقة أو الملاحظات، والفلتر التلقائي مفعّل على صف الرأس للفرز حسب المصدر.']:[]),
@@ -2573,17 +2605,23 @@ function exportExcel0(outFmt){
 
     /* بلوك حركة الدفاتر */
     const LED=(HAS_ADR?ADR:(HAS_FAR?FAR_ALL:[])).filter(l=>l.pdt!=null&&l.pdt>=SD&&l.pdt<=ED);
-    const ldDr=LED.reduce((a,l)=>a+l.debit,0), ldCr=LED.reduce((a,l)=>a+l.credit,0);
+    const ldDr=LED.reduce((a,l)=>a+l.debit,0);
+    /* إجمالي الدائن = قيود الدفاتر الدائنة المتطابقة مع الحركات الصادرة (مدين كشف المصرف + بنود «يضاف إلى دائن الدفاتر» بالمذكرة) */
+    const ldCr=+[...R.mf.map(x=>[x,FAR]),...R.ma.map(x=>[x,ADR])]
+      .filter(([x])=>BANK[x[0]].debit>0)
+      .reduce((a,[x,L])=>a+(L[x[1]].credit||0),0).toFixed(3);
     const ldName=HAS_ADR?'دفتر الادارة':(HAS_FAR?'دفتر الفرع':'الدفاتر');
-    const openBal=+(N.book-(ldDr-ldCr)).toFixed(3);
+    /* الرصيد الافتتاحي = رصيد الإقفال الدفتري في آخر ورقة بمذكرة التسوية المرفوعة */
+    const memoOpen=(memoOn()&&MEMO&&MEMO[MEMO_IDX]&&isFinite(+MEMO[MEMO_IDX].opening))?+(+MEMO[MEMO_IDX].opening).toFixed(3):null;
+    const openBal=memoOpen!=null?memoOpen:+(N.book-(ldDr-ldCr)).toFixed(3);
     P(4,1,'البيان',MX.hdr); P(4,2,'',MX.hdr); MG(4,1,4,2);
     P(4,3,'اجمالي مدين ',MX.hdr); P(4,4,'اجمالي دائن ',MX.hdr);
     P(4,5,'رصيد اقفال',MX.hdr); fill(4,6,7,MX.hdr); MG(4,5,4,7);
     const bRow=(r,lbl,dv,cv)=>{ P(r,1,lbl,MX.cell); P(r,2,'',MX.cell); MG(r,1,r,2);
       P(r,3,dv,MX.num); P(r,4,cv,MX.num); F(r,5,'D'+XL(r)+'-E'+XL(r),MX.num); fill(r,6,7,MX.num); MG(r,5,r,7); };
-    bRow(5,'الرصيد الافتتاحي الدفتري في '+dmy(SD), openBal>=0?openBal:'', openBal<0?-openBal:'');
-    bRow(6,'اجمالي حركة المدين ('+ldName+')', ldDr, '');
-    bRow(7,'اجمالي حركة الدائن ('+ldName+')', '', ldCr);
+    bRow(5,'الرصيد الافتتاحي الدفتري في '+dmy(SD), openBal>=0?openBal:0, openBal<0?-openBal:0);
+    bRow(6,'اجمالي حركة المدين ('+ldName+')', ldDr, 0);
+    bRow(7,'اجمالي حركة الدائن (القيود الدائنة المتطابقة مع الحركات الصادرة)', 0, ldCr);
     P(8,1,'الاجمالي',MX.sum); P(8,2,'',MX.sum); MG(8,1,8,2);
     F(8,3,'SUM(D6:D8)',MX.sumn); F(8,4,'SUM(E6:E8)',MX.sumn); F(8,5,'SUM(F6:F8)',MX.sumn);
     fill(8,6,7,MX.sum); MG(8,5,8,7);
@@ -2593,7 +2631,7 @@ function exportExcel0(outFmt){
     P(10,3,'يضاف ',MX.hdr); P(10,4,'يطرح',MX.hdr); P(10,5,'رصيد اقفال الافتراضي',MX.hdr);
     P(10,6,'التاريخ',MX.hdr); P(10,7,'الرقم المرجعي',MX.hdr);
     P(11,1,'رصيد الإقفال الدفتري في '+dmy(ED),MX.open); P(11,2,'',MX.open); MG(11,1,11,2);
-    F(11,3,'F9',MX.openn); P(11,4,'',MX.open); F(11,5,'D12',MX.openn); P(11,6,'-',MX.open); P(11,7,'-',MX.open);
+    F(11,3,'F9',MX.openn); P(11,4,0,MX.openn); F(11,5,'D12',MX.openn); P(11,6,'-',MX.open); P(11,7,'-',MX.open);
 
     /* الأقسام الأربعة بنفس ترتيب المذكرة وألوانها */
     let r=12, prev=12, band=false;            // prev = صف الرصيد السابق (اكسيل)
@@ -2603,14 +2641,14 @@ function exportExcel0(outFmt){
       const list=N.secs[sec.key];
       if(!list.length){ const st=mxRow(false);
         P(r,1,'لا توجد بنود معلّقة – تمت تسوية هذا القسم بالكامل',st.txt); P(r,2,'',st.txt); MG(r,1,r,2);
-        P(r,3,'',st.num); P(r,4,'',st.num); F(r,5,'F'+prev,st.num); P(r,6,'',st.txt); P(r,7,'',st.txt);
+        P(r,3,0,st.num); P(r,4,0,st.num); F(r,5,'F'+prev,st.num); P(r,6,'',st.txt); P(r,7,'',st.txt);
         prev=XL(r); r++; return; }
       list.forEach(it=>{
         const st=mxRow(band); band=!band;
         P(r,0,it.carried?'مرحّل':'جديد',MX.tag);
         P(r,1,it.bayan,st.txt); P(r,2,'',st.txt); MG(r,1,r,2);
-        P(r,3,(sec.col==='add'?it.amount:''),st.num);
-        P(r,4,(sec.col==='sub'?it.amount:''),st.num);
+        P(r,3,(sec.col==='add'?it.amount:0),st.num);
+        P(r,4,(sec.col==='sub'?it.amount:0),st.num);
         F(r,5,'F'+prev+'+D'+XL(r)+'-E'+XL(r),st.num);
         P(r,6,it.date,st.txt); P(r,7,it.ref,st.txt);
         prev=XL(r); r++;
@@ -2638,66 +2676,10 @@ function exportExcel0(outFmt){
     ws['!rows']=hts;
     XW.utils.book_append_sheet(wb,ws,'مذكرة التسوية المحدثة');
 
-    /* ورقة مستقلة: البنود التي سُوّيت وأُسقطت من المذكرة */
-    if(N.cleared.length){
-      const C=new Sheet();
-      C.title('بنود مذكرة التسوية السابقة التي تمت تسويتها وأُسقطت من المذكرة المحدّثة',7);
-      C.subtitle(period+' – عدد '+N.cleared.length+' بنداً وُجد له قيد مطابق بالدفاتر',7);
-      C.blank();
-      const CK=['neu','neu','neu','neu','neu','neu','neu'], CT=['cen','cen','txt','txt','num','txt','txt'];
-      C.headerMixed(['م','التاريخ','الرقم المرجعي','البيان','القيمة','القسم بالمذكرة السابقة','أساس المطابقة'],CK);
-      let t=0;
-      N.cleared.forEach((c,k)=>{ t+=c.amount;
-        C.rowMixed([k+1,c.date,c.ref,c.bayan,c.amount,c.side+' (صف '+c.row+')',c.basis],CK,CT,k%2===1); });
-      C.total('الإجمالي',7,{4:t});
-      C.setWidths([5,14,26,54,16,30,40]);
-      XW.utils.book_append_sheet(wb,C.build(),'بنود سُوّيت');
-    }
+
   }
 
-  /* --- ورقة مصدر الحركات: مذكرة التسوية (وضع التسوية) --- */
-  if(TREASURY&&MEMO&&MEMO.length&&MEMO_ROWS.length){
-    const ms=MEMO[MEMO_IDX], inf=MEMO_INFO||{skipped:[],fixed:0};
-    const mp=memoStatusMap();
-    const M=new Sheet();
-    M.title('مذكرة التسوية – حركات إضافية لكشف المصرف (وضع التسوية)',8);
-    M.subtitle('الملف: '+MEMO_NAME+' – الورقة: '+ms.sheet+' (آخر ورقة) – '+period+' – حركات مضافة: '+MEMO_ROWS.length+' إلى '+BANK_BASE.length+' حركة بالكشف',8);
-    M.blank();
-    const MK2=['neu','bank','bank','bank','bank','bank','neu','neu'];
-    const MT2=['cen','cen','txt','txt','num','num','txt','txt'];
-    const mBlk=(isCr)=>{
-      M.headerMixed(['م','تاريخ الحركة','الرقم المرجعي','بيان المذكرة','دائن مصرف (+)','مدين مصرف (-)','حالة المطابقة','ملاحظات'],MK2);
-      const rows=BANK.map((b,i)=>({b,i})).filter(x=>x.b.src==='memo'&&(isCr?x.b.credit>0:x.b.debit>0));
-      if(!rows.length){ M.rowMixed(['-','','','لا توجد بنود','','','',''],MK2,MT2); return; }
-      let t=0;
-      rows.forEach((x,k)=>{ const amt=isCr?x.b.credit:x.b.debit; t+=amt;
-        M.rowMixed([k+1,x.b.dateStr,x.b.ref,x.b.bayan,isCr?amt:'',isCr?'':amt,
-          mp[x.i]||'لم يُعثر على قيد مطابق بالدفاتر – تتطلب مراجعة وقيدها',
-          (isCr?'حركة دائنة بالمصرف (حوالة واردة) – تُطابق مدين الدفاتر':'حركة مدينة بالمصرف (حوالة صادرة/عمولة) – تُطابق دائن الدفاتر')],MK2,MT2,k%2===1); });
-      M.total('الإجمالي',8,isCr?{4:t}:{5:t});
-    };
-    M.section('القسم (أ): «يضاف إلى مدين الدفاتر» – حركات دائنة بالمصرف تدخل المطابقة مع مدين الدفاتر',8);
-    mBlk(true); M.blank();
-    M.section('القسم (ب): «يضاف إلى دائن الدفاتر» – حركات مدينة بالمصرف تدخل المطابقة مع دائن الدفاتر',8);
-    mBlk(false); M.blank();
-    const SK2=['neu','neu','neu','neu','neu','neu','neu','neu'];
-    const skBlk2=(key,ttl)=>{
-      M.section(ttl,8);
-      M.headerMixed(['م','القسم','التاريخ','الرقم المرجعي','بيان المذكرة','يضاف','يطرح','ملاحظات المراجع'],SK2);
-      const rows=(inf.skipped||[]).filter(x=>x.sec===key);
-      const lbl=(E.MEMO_SECS.find(x=>x.key===key)||{}).label||'';
-      if(!rows.length){ M.rowMixed(['-',lbl,'','','لا توجد بنود','','',''],SK2,MT2); return; }
-      let a=0,b=0;
-      rows.forEach((x,k)=>{ a+=x.add; b+=x.sub;
-        const dd=E.anyDate(x.dateRaw);
-        M.rowMixed([k+1,lbl,dd!=null?E.fmtPad(dd):(x.dateRaw||''),x.ref,x.bayan,x.add||'',x.sub||'','بند دفتري بالمذكرة لا يمثل حركة مصرفية – مستبعد من المطابقة، للمراجعة فقط'],SK2,MT2,k%2===1); });
-      M.total('الإجمالي',8,{5:a,6:b});
-    };
-    skBlk2('subCredit','القسم (ج): «يخصم من دائن الدفاتر» – بنود دفترية مستبعدة من المطابقة'); M.blank();
-    skBlk2('subDebit','القسم (د): «يخصم من مدين الدفاتر» – بنود دفترية مستبعدة من المطابقة');
-    M.setWidths([5,13,26,54,15,15,34,42]);
-    XW.utils.book_append_sheet(wb,M.build(),'مذكرة التسوية');
-  }
+
 
   /* --- 2) حركات بالمصرف فقط: جدولان منفصلان (مدين / دائن) --- */
   const S2=new Sheet();
@@ -2811,11 +2793,16 @@ function exportExcel0(outFmt){
     const S=new Sheet();
     S.title('الحركات غير المتطابقة بين كشف المصرف ودفتر الفرع',9);
     S.subtitle(period+' – '+modeTxt+' – أعمدة المصرف بخلفية زرقاء وأعمدة الدفتر بخلفية خضراء',9); S.blank();
-    S.section('القسم (أ): حوالات واردة بكشف المصرف لم يُعثر لها على قيد مطابق بدفتر الفرع',9);
-    uBank(S,R.unbCr,'حوالة واردة بالكشف بدون قيد مطابق بدفتر الفرع – تتطلب مراجعة وقيدها'); S.blank();
-    S.section('القسم (ب): قيود بدفتر الفرع لم تظهر بكشف المصرف خلال الفترة (إيداعات بالطريق / تتطلب تتبعاً)',9);
+    let kf=0;
+    if(DIFF_SHOW.unf.bank||(DIFF_SHOW.unf.memo&&memoOn())){
+      NOSRC=!(DIFF_SHOW.unf.memo&&memoOn());
+      S.section('القسم ('+LETTERS[kf++]+'): حوالات واردة لم يُعثر لها على قيد مطابق بدفتر الفرع',9);
+      uBank(S,diffPick('unf',R.unbCr),'حوالة واردة بدون قيد مطابق بدفتر الفرع – تتطلب مراجعة وقيدها'); S.blank();
+      NOSRC=false;
+    }
+    S.section('القسم ('+LETTERS[kf++]+'): قيود بدفتر الفرع لم تظهر بكشف المصرف خلال الفترة (إيداعات بالطريق / تتطلب تتبعاً)',9);
     uLed(S,R.unfIn,'دفتر الفرع'); S.blank();
-    S.section('القسم (ج): قيود بدفتر الفرع بتاريخ لاحق لنهاية فترة الكشف – للحصر وخارج نطاق المطابقة',9);
+    S.section('القسم ('+LETTERS[kf++]+'): قيود بدفتر الفرع بتاريخ لاحق لنهاية فترة الكشف – للحصر وخارج نطاق المطابقة',9);
     uLed(S,R.unfAfter,'دفتر الفرع');
     S.setWidths(UW);
     XW.utils.book_append_sheet(wb,S.build(),'فروقات الفرع');
@@ -2846,14 +2833,18 @@ function exportExcel0(outFmt){
     const S=new Sheet();
     S.title('الحركات غير المتطابقة بين كشف المصرف ودفتر الادارة',9);
     S.subtitle(period+' – '+modeTxt+' – أعمدة المصرف بخلفية زرقاء وأعمدة الدفتر بخلفية خضراء',9); S.blank();
-    S.section('القسم (أ): حوالات صادرة من الحساب بكشف المصرف لم يُعثر لها على قيد بدفتر الادارة',9);
-    NOSRC=true;   // حركات كشف المصرف وحدها في هذه الورقة
-    uBank(S,R.unbOut.filter(b=>!isMemoB(b)),'حوالة صادرة غير مقيدة بدفتر الادارة – تتطلب مراجعة وقيدها'); S.blank();
-    S.section('القسم (ب): حوالات واردة إلى الحساب بكشف المصرف لم يُعثر لها على قيد بدفتر الادارة',9);
-    uBank(S,R.unbCr.filter(b=>!isMemoB(b)),'حوالة واردة بالكشف بدون قيد مطابق بدفتر الادارة – تتطلب مراجعة وقيدها'); S.blank();
-    S.section('القسم (ج): قيود بدفتر الادارة لم تظهر بكشف المصرف خلال الفترة',9);
+    let ka=0;
+    if(DIFF_SHOW.una.bank||(DIFF_SHOW.una.memo&&memoOn())){
+      NOSRC=!(DIFF_SHOW.una.memo&&memoOn());
+      S.section('القسم ('+LETTERS[ka++]+'): حوالات صادرة لم يُعثر لها على قيد بدفتر الادارة',9);
+      uBank(S,diffPick('una',R.unbOut),'حوالة صادرة غير مقيدة بدفتر الادارة – تتطلب مراجعة وقيدها'); S.blank();
+      S.section('القسم ('+LETTERS[ka++]+'): حوالات واردة لم يُعثر لها على قيد بدفتر الادارة',9);
+      uBank(S,diffPick('una',R.unbCr),'حوالة واردة بدون قيد مطابق بدفتر الادارة – تتطلب مراجعة وقيدها'); S.blank();
+      NOSRC=false;
+    }
+    S.section('القسم ('+LETTERS[ka++]+'): قيود بدفتر الادارة لم تظهر بكشف المصرف خلال الفترة',9);
     uLed(S,R.unaIn,'دفتر الادارة'); S.blank();
-    S.section('القسم (د): قيود بدفتر الادارة بتاريخ لاحق لنهاية فترة الكشف – للحصر وخارج نطاق المطابقة',9);
+    S.section('القسم ('+LETTERS[ka++]+'): قيود بدفتر الادارة بتاريخ لاحق لنهاية فترة الكشف – للحصر وخارج نطاق المطابقة',9);
     uLed(S,R.unaAfter,'دفتر الادارة');
     S.setWidths(UW);
     XW.utils.book_append_sheet(wb,S.build(),'فروقات الادارة');
