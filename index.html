@@ -620,8 +620,9 @@ var SFX=(function(){
     var done=false, fin=function(){ if(!done){ done=true; if(cb) cb(); } };
     try{
       var u=new SpeechSynthesisUtterance(text); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
-      u.onstart=function(){ duck(true); }; var end=function(){ duck(false); fin(); };
-      u.onend=end; u.onerror=end; speechSynthesis.speak(u); setTimeout(function(){ if(!done){ duck(false); fin(); } },3000);
+      var wd=null, end=function(){ clearTimeout(wd); duck(false); fin(); };
+      u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); };
+      u.onend=end; u.onerror=end; speechSynthesis.speak(u); wd=setTimeout(end,4500);
     }catch(e){ fin(); }
   }
   function say(key,cb){
@@ -633,19 +634,22 @@ var SFX=(function(){
       }
       var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
       var u=new SpeechSynthesisUtterance(WORDS[key](v)); u.voice=v; u.lang=v.lang; u.rate=0.85; u.pitch=0.85; u.volume=1;
-      u.onstart=function(){ duck(true); }; var end=function(){ duck(false); fin(); };
-      u.onend=end; u.onerror=end; speechSynthesis.speak(u); setTimeout(function(){ if(!done){ duck(false); fin(); } },3000);
+      var wd=null, end=function(){ clearTimeout(wd); duck(false); fin(); };
+      u.onstart=function(){ duck(true); clearTimeout(wd); wd=setTimeout(end,8000); };
+      u.onend=end; u.onerror=end; speechSynthesis.speak(u); wd=setTimeout(end,4500);
     }catch(e){ fin(); }
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
-  function play(scene){
+  /* done: يُستدعى عند انتهاء أصوات المشهد وكلامه بالكامل */
+  function play(scene,done){
     var c=ctx(); if(!c||c.state!=='running'&&scene==='intro') return false;
+    done=done||function(){};
     try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
     var t=c.currentTime+0.03, now=function(){ return c.currentTime+0.02; };
     try{
-      if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); setTimeout(function(){ say('sahlouga'); },2150); }
-      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('sahlouga',function(){ S.laugh(now(),12); }); }
-      else if(scene==='bzq'){ S.thud(t); S.coins(t); setTimeout(function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); }); },300); },350); }
+      if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); setTimeout(function(){ say('sahlouga',done); },2150); }
+      else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('sahlouga',function(){ S.laugh(now(),12); setTimeout(done,2200); }); }
+      else if(scene==='bzq'){ S.thud(t); S.coins(t); setTimeout(function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); setTimeout(done,1900); }); },300); },350); }
     }catch(e){ console.warn(e); }
     return true;
   }
@@ -694,7 +698,7 @@ var SFX=(function(){
   var sp=document.getElementById('splash'), T=[];
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduce) sp.querySelectorAll('animate,animateTransform').forEach(function(a){ a.remove(); });
-  var clear=function(){ T.forEach(clearTimeout); T=[]; };
+  var clear=function(){ T.forEach(clearTimeout); T=[]; }, SCENE=0;
   var t1=document.getElementById('bubT1'), t2=document.getElementById('bubT2');
   window.hideSplash=function(){
     if(!sp||sp.hidden||sp.classList.contains('out')) return;
@@ -711,8 +715,9 @@ var SFX=(function(){
     void sp.offsetWidth; sp.classList.add('p2');
     if(reduce) sp.classList.add('p3');
     else T.push(setTimeout(function(){ sp.classList.add('p3'); },350));
-    SFX.play(kind);
-    T.push(setTimeout(window.hideSplash,kind==='bzq'?5200:4500));
+    var tok=++SCENE, t0=Date.now();
+    var played=SFX.on&&SFX.play(kind,function(){ if(tok!==SCENE) return; T.push(setTimeout(window.hideSplash,Math.max(800,3500-(Date.now()-t0)))); });
+    T.push(setTimeout(window.hideSplash,played?14000:(kind==='bzq'?5200:4500)));
   };
   /* المتصفح يمنع الصوت قبل أول ضغطة: إن كان الصوت مفعّلاً ينتظر المشهد الأول ضغطة ثم يبدأ من أوله بالصوت */
   var gated=false, hint=document.getElementById('spHint');
@@ -723,10 +728,17 @@ var SFX=(function(){
   }
   function startIntro(){
     gated=false; sp.classList.remove('gate'); hint.textContent='اضغط للمتابعة';
-    SFX.unlock(function(){ restart(); SFX.play('intro'); T.push(setTimeout(window.hideSplash,4400)); });
+    SFX.unlock(function(){ restart(); introPlay(); });
+  }
+  function introPlay(first){
+    var tok=++SCENE;
+    var ok=SFX.play('intro',function(){ if(tok===SCENE) T.push(setTimeout(window.hideSplash,800)); });
+    if(ok) T.push(setTimeout(window.hideSplash,14000));
+    else if(!first) T.push(setTimeout(window.hideSplash,3000));
+    return ok;
   }
   window.splashClick=function(){ if(gated) startIntro(); else window.hideSplash(); };
-  if(SFX.on && SFX.play('intro')) T.push(setTimeout(window.hideSplash,4400));
+  if(SFX.on && introPlay(true)){}
   else if(SFX.on){ gated=true; sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
   else T.push(setTimeout(window.hideSplash,reduce?2500:3000));
   document.addEventListener('keydown',function(e){ if(gated){ if(e.key!=='Escape'){ startIntro(); return; } gated=false; } window.hideSplash(); });
