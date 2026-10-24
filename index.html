@@ -315,6 +315,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 .vd-box{background:var(--surface); color:var(--text); border-radius:14px; width:min(640px,100%); max-height:90vh; overflow:auto; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.3);}
 .vd-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .vd-top h2{font-size:18px; margin:0;}
+.vd-sec{font-size:15px; margin:14px 0 8px; color:var(--ink);}
 .vd-intro{font-size:13.5px; color:var(--muted); line-height:1.7; margin:8px 0;}
 .vd-note{font-size:12.5px; background:var(--canvas); border-radius:8px; padding:8px 10px; margin:0 0 10px;}
 .vd-card{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;}
@@ -611,6 +612,17 @@ var SFX=(function(){
   var DEF_CHOICE={id:'ghn',voice:null};
   var CHOICE=null; try{ CHOICE=JSON.parse(localStorage.getItem('sahVoice')||'null'); }catch(e){}
   if(!CHOICE) CHOICE=DEF_CHOICE;
+  /* نماذج نطق «بزق» */
+  var BZQ=[
+    {id:'b1', t:'أُبُزُقْ — ضم الحروف وتسكين القاف (الحالي)', txt:'أُبُزُقْ!', pref:[/LY/i,/EG/i], d:'النطق المستخدم حتى الآن.'},
+    {id:'b2', t:'أُبْزُقْ — تسكين الباء',                txt:'أُبْزُقْ!', pref:[/LY/i,/SA/i],  d:'فعل الأمر كما يُقال عادة: همزة مضمومة، باء ساكنة، زاي مضمومة.'},
+    {id:'b3', t:'أُبْزُغْ — بصوت صالح اليمني',            txt:'أُبْزُغْ!', pref:[/YE/i,/LY/i], name:/صالح|Saleh/i, d:'بنفس طريقة «السحلوقة» المعتمدة، فتخرج القاف [ɡ] على الطريقة الليبية.'},
+    {id:'b4', t:'أُبْزُجْ — بصوت مصري',                   txt:'أُبْزُجْ!', pref:[/EG/i],        d:'الجيم المصرية [ɡ] بدل القاف.'},
+    {id:'b5', t:'بْزُقْ — بلا همزة',                      txt:'بْزُقْ!',   pref:[/LY/i,/SA/i],  d:'أقصر وأسرع.'},
+    {id:'b6', t:'بَزْق! — اسماً',                         txt:'بَزْقْ!',   pref:[/SA/i,/LY/i],  d:'الكلمة اسماً لا فعلاً.'},
+    {id:'b7', t:'حروف لاتينية بصوت إنجليزي',              txt:'Obzog!',    pref:[/^en/i], en:true, d:'بلكنة إنجليزية، والـ g واضحة.'}
+  ];
+  var BCHOICE=null; try{ BCHOICE=JSON.parse(localStorage.getItem('bzqVoice')||'null'); }catch(e){}
   function allVoices(){ try{ return window.speechSynthesis?speechSynthesis.getVoices():[]; }catch(e){ return []; } }
   function modelVoice(m,uri){
     var vs=allVoices(), pool=vs.filter(function(x){ return m.en?/^en/i.test(x.lang):/^ar/i.test(x.lang); });
@@ -664,6 +676,10 @@ var SFX=(function(){
         var m=MODELS.filter(function(x){ return x.id===CHOICE.id; })[0], cv=m&&modelVoice(m,CHOICE.voice);
         if(cv){ if(key==='done2') sayDone2(m.g,cv,fin,m.phrase); else speak(m.txt,cv,fin); return; }
       }
+      if(key==='obzoq'&&BCHOICE&&on){
+        var bm=BZQ.filter(function(x){ return x.id===BCHOICE.id; })[0], bv=bm&&modelVoice(bm,BCHOICE.voice);
+        if(bv){ speak(bm.txt,bv,fin); return; }
+      }
       var v=on&&voice(); if(!v){ setTimeout(fin,key==='sahlouga'?700:450); return; }
       if(key==='done2'){ sayDone2(/EG/i.test(v.lang)?'ج':'ق',v,fin); return; }
       speak(WORDS[key](v),v,fin);
@@ -694,24 +710,27 @@ var SFX=(function(){
     var vs=allVoices(), ar=vs.filter(function(x){ return /^ar/i.test(x.lang); }), en=vs.filter(function(x){ return /^en/i.test(x.lang); });
     document.getElementById('vdNote').innerHTML=!window.speechSynthesis?'متصفحك لا يدعم النطق الآلي.':
       (ar.length?'الأصوات العربية في جهازك ('+ar.length+'): '+esc(ar.map(function(x){ return x.lang; }).filter(function(x,i,a){ return a.indexOf(x)===i; }).join('، ')):'لا يوجد في جهازك صوت عربي للنطق. متصفح Edge يضم أصواتاً عربية بعدة لهجات.');
-    box.innerHTML=MODELS.map(function(m){
-      var pool=m.en?en:ar, sel=CHOICE&&CHOICE.id===m.id, dv=modelVoice(m,sel?CHOICE.voice:null);
+    var card=function(list,ch){ return function(m){
+      var pool=m.en?en:ar, sel=ch?ch.id===m.id:(list==='b'&&m.id==='b1'), dv=modelVoice(m,sel&&ch?ch.voice:null);
       var opts=pool.map(function(x){ return '<option value="'+esc(x.voiceURI)+'"'+(dv&&dv.voiceURI===x.voiceURI?' selected':'')+'>'+esc(x.name+' — '+x.lang)+'</option>'; }).join('');
-      return '<div class="vd-card'+(sel?' on':'')+'" data-id="'+m.id+'"><div class="vd-h"><b>'+esc(m.t)+'</b>'+(sel?'<span class="vd-tag">المعتمد</span>':'')+'</div>'+
-        '<div class="vd-w" dir="auto">'+esc(m.txt.replace(/\.$/,''))+'</div><p>'+esc(m.d)+'</p>'+
+      return '<div class="vd-card'+(sel?' on':'')+'" data-list="'+list+'" data-id="'+m.id+'"><div class="vd-h"><b>'+esc(m.t)+'</b>'+(sel?'<span class="vd-tag">المعتمد</span>':'')+'</div>'+
+        '<div class="vd-w" dir="auto">'+esc(m.txt.replace(/[.!]$/,''))+'</div><p>'+esc(m.d)+'</p>'+
         '<div class="vd-row"><select aria-label="الصوت"'+(pool.length?'':' disabled')+'>'+(opts||'<option>لا يوجد صوت مناسب</option>')+'</select>'+
         '<button class="btn" data-act="play"'+(pool.length?'':' disabled')+'>▶ استماع</button><button class="btn solid" data-act="pick"'+(pool.length?'':' disabled')+'>اعتماد</button></div></div>';
-    }).join('')+'<div class="vd-card'+(CHOICE.id==='old'?' on':'')+'"><div class="vd-h"><b>النظام الأول</b>'+(CHOICE.id==='old'?'<span class="vd-tag">المعتمد</span>':'')+'</div><p>تختار الأداة الصوت الليبي ثم المصري تلقائياً.</p><div class="vd-row"><button class="btn" data-act="old">اعتماد</button><button class="btn" data-act="def">رجوع إلى المعتمد الأصلي (الغين – صالح)</button></div></div>';
+    }; };
+    document.getElementById('vdList2').innerHTML=BZQ.map(card('b',BCHOICE)).join('');
+    box.innerHTML=MODELS.map(card('s',CHOICE)).join('')+'<div class="vd-card'+(CHOICE.id==='old'?' on':'')+'"><div class="vd-h"><b>النظام الأول</b>'+(CHOICE.id==='old'?'<span class="vd-tag">المعتمد</span>':'')+'</div><p>تختار الأداة الصوت الليبي ثم المصري تلقائياً.</p><div class="vd-row"><button class="btn" data-act="old">اعتماد</button><button class="btn" data-act="def">رجوع إلى المعتمد الأصلي (الغين – صالح)</button></div></div>';
   }
   function dlgClick(e){
     var b=e.target.closest('button[data-act]'); if(!b) return;
-    var card=b.closest('.vd-card'), id=card.getAttribute('data-id'), m=MODELS.filter(function(x){ return x.id===id; })[0];
+    var card=b.closest('.vd-card'), id=card.getAttribute('data-id'), isB=card.getAttribute('data-list')==='b', m=(isB?BZQ:MODELS).filter(function(x){ return x.id===id; })[0];
     var sel=card.querySelector('select'), v=m&&modelVoice(m,sel&&sel.value);
     var act=b.getAttribute('data-act');
     if(act==='def'){ CHOICE=DEF_CHOICE; try{ localStorage.removeItem('sahVoice'); }catch(e){} renderVoices(); return; }
     if(act==='old'){ CHOICE={id:'old'}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); return; }
     if(!v) return;
     if(act==='play'){ try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
+    if(act==='pick'&&isB){ BCHOICE={id:m.id,voice:v.voiceURI}; try{ localStorage.setItem('bzqVoice',JSON.stringify(BCHOICE)); }catch(e){} renderVoices(); try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); return; }
     if(act==='pick'){ CHOICE={id:m.id,voice:v.voiceURI}; try{ localStorage.setItem('sahVoice',JSON.stringify(CHOICE)); }catch(e){} renderVoices(); try{ speechSynthesis.cancel(); }catch(e){} speak(m.txt,v); }
   }
   function openDlg(){
@@ -805,7 +824,7 @@ var SFX=(function(){
         <button class="btn" id="btnChart" style="display:none" onclick="closeMenu();document.getElementById('chartInput').click()">دليل الحسابات</button>
         <button class="btn" id="btnClose" style="display:none" onclick="closeMenu();document.getElementById('closeInput').click()" title="استبدال دليل حسابات الإقفال المستخدم في قيد الإقفال">دليل الإقفال</button>
         <button class="btn" id="btnSfx" onclick="closeMenu();SFX.toggle()">الأصوات: تشغيل</button>
-        <button class="btn" id="btnVoice" onclick="closeMenu();SFX.openVoices()">نطق «السحلوقة»…</button>
+        <button class="btn" id="btnVoice" onclick="closeMenu();SFX.openVoices()">اختيار النطق…</button>
         <hr>
         <button class="btn" id="btnReset" style="display:none" onclick="location.reload()">بدء تسوية جديدة</button>
       </div>
@@ -3637,10 +3656,13 @@ function exportExcel0(outFmt){
 </script>
 <div class="vdlg" id="voiceDlg" hidden role="dialog" aria-modal="true" aria-labelledby="vdTitle">
   <div class="vd-box">
-    <div class="vd-top"><h2 id="vdTitle">نماذج نطق «السحلوقة»</h2><button class="btn" onclick="SFX.closeVoices()" aria-label="إغلاق">✕</button></div>
+    <div class="vd-top"><h2 id="vdTitle">نماذج النطق</h2><button class="btn" onclick="SFX.closeVoices()" aria-label="إغلاق">✕</button></div>
     <p class="vd-intro">حرف <b>ڨ</b> (القاف المثلثة أو المغلّظة) يُنطق كالجيم المصرية <b dir="ltr">[ɡ]</b>، مثل «ڨابس» و«ڨفصة». القارئ الآلي لا يعرف هذا الحرف في أغلب الأجهزة، فهذه طرق كتابة مختلفة تقرّبه. استمع إلى كل نموذج واعتمد الأوضح؛ يُستخدم المعتمد في كل المشاهد.</p>
     <p class="vd-note" id="vdNote"></p>
+    <h3 class="vd-sec">نطق «السحلوقة»</h3>
     <div id="vdList"></div>
+    <h3 class="vd-sec">نطق «بزق» في مشهد التصدير</h3>
+    <div id="vdList2"></div>
   </div>
 </div>
 </body>
