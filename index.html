@@ -597,7 +597,7 @@ var SFX=(function(){
   var WORDS={
     sahlouga:function(v){ return v&&/EG/i.test(v.lang)?'السَّحْلُوجَا.':'السَّحْلُوقَا.'; },  /* سَّ شدة مفتوحة، حْ ساكنة، لُ مضمومة، ڨَ مفتوحة */
     done2:function(v){ return DONE2(v&&/EG/i.test(v.lang)?'ج':'ق'); },                    /* المشهد الثاني */
-    obzoq:function(){ return 'ابُزُقْ!'; }                                              /* ضم كل الحروف مع تسكين القاف */
+    obzoq:function(){ return 'بْزُقْ!'; }                                              /* ضم كل الحروف مع تسكين القاف */
   };
   /* نماذج نطق «السحلوقة» — حرف ڨ يُنطق كالجيم المصرية [ɡ] */
   var MODELS=[
@@ -614,17 +614,17 @@ var SFX=(function(){
   if(!CHOICE) CHOICE=DEF_CHOICE;
   /* نماذج نطق «بزق» */
   var BZQ=[
-    {id:'b1', t:'ابُزُقْ — ألف عادية، ضم الباء والزاي وتسكين القاف', txt:'ابُزُقْ!', pref:[/AE/i,/LY/i,/EG/i], name:/حمدان|Hamdan/i, nameLang:/AE/i, d:'المعتمد: بصوت حمدان الإماراتي.'},
+    {id:'b1', t:'ابُزُقْ — ألف عادية، ضم الباء والزاي وتسكين القاف', txt:'ابُزُقْ!', pref:[/AE/i,/LY/i,/EG/i], name:/حمدان|Hamdan/i, nameLang:/AE/i, d:'ألف عادية في أوله.'},
     {id:'b2', t:'أُبْزُقْ — تسكين الباء',                txt:'أُبْزُقْ!', pref:[/LY/i,/SA/i],  d:'فعل الأمر كما يُقال عادة: همزة مضمومة، باء ساكنة، زاي مضمومة.'},
     {id:'b3', t:'أُبْزُغْ — بصوت صالح اليمني',            txt:'أُبْزُغْ!', pref:[/YE/i,/LY/i], name:/صالح|Saleh/i, nameLang:/YE/i, d:'بنفس طريقة «السحلوقة» المعتمدة، فتخرج القاف [ɡ] على الطريقة الليبية.'},
     {id:'b4', t:'أُبْزُجْ — بصوت مصري',                   txt:'أُبْزُجْ!', pref:[/EG/i],        d:'الجيم المصرية [ɡ] بدل القاف.'},
-    {id:'b5', t:'بْزُقْ — بلا همزة',                      txt:'بْزُقْ!',   pref:[/LY/i,/SA/i],  d:'أقصر وأسرع.'},
+    {id:'b5', t:'بْزُقْ — بلا همزة',                      txt:'بْزُقْ!',   pref:[/AE/i,/LY/i,/SA/i], name:/حمدان|Hamdan/i, nameLang:/AE/i, d:'المعتمد: بصوت حمدان الإماراتي.'},
     {id:'b6', t:'بَزْق! — اسماً',                         txt:'بَزْقْ!',   pref:[/SA/i,/LY/i],  d:'الكلمة اسماً لا فعلاً.'},
     {id:'b7', t:'حروف لاتينية بصوت إنجليزي',              txt:'Obzog!',    pref:[/^en/i], en:true, d:'بلكنة إنجليزية، والـ g واضحة.'}
   ];
-  /* المعتمد: «ابُزُقْ» بصوت حمدان الإماراتي */
+  /* المعتمد: «بْزُقْ» بصوت حمدان الإماراتي */
   var BCHOICE=null; try{ BCHOICE=JSON.parse(localStorage.getItem('bzqVoice')||'null'); }catch(e){}
-  if(!BCHOICE) BCHOICE={id:'b1',voice:null};
+  if(!BCHOICE) BCHOICE={id:'b5',voice:null};
   function allVoices(){ try{ return window.speechSynthesis?speechSynthesis.getVoices():[]; }catch(e){ return []; } }
   function modelVoice(m,uri){
     var vs=allVoices(), pool=vs.filter(function(x){ return m.en?/^en/i.test(x.lang):/^ar/i.test(x.lang); });
