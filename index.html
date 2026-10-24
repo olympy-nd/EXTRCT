@@ -308,13 +308,15 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 @keyframes coin{0%{opacity:1;transform:translate(0,0) scale(.6)}45%{opacity:1;transform:translate(calc(var(--dx)*.6),var(--dy)) scale(1)}100%{opacity:0;transform:translate(var(--dx),40px) scale(1) rotate(540deg)}}
 @keyframes dust{0%{opacity:.75;transform:scale(.3)}100%{opacity:0;transform:scale(2.4) translateY(-14px)}}
 @media (prefers-reduced-motion:reduce){ .splash svg,.splash .flash,.splash .coin,.splash .dust{animation:none!important;} }
+.splash.gate small{color:#F2C14E; font-size:16px; font-weight:700; animation:hintp 1.2s ease-in-out infinite;}
+@keyframes hintp{50%{opacity:.45}}
 .splash small{position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); color:#7F97AE; font-size:12px;}
 @media (prefers-reduced-motion:reduce){ .splash{transition:none;} }
 </style>
 
 </head>
 <body>
-<div class="splash" id="splash" role="dialog" aria-label="السحلوقة للتسوية المصرفية – ملوك الـ Extract" onclick="hideSplash()">
+<div class="splash" id="splash" role="dialog" aria-label="السحلوقة للتسوية المصرفية – ملوك الـ Extract" onclick="splashClick()">
 <svg viewBox="-10 -95 700 475" aria-hidden="true">
   <!-- الأرض -->
   <ellipse cx="340" cy="352" rx="330" ry="15" fill="#0A1A2A"/>
@@ -517,7 +519,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 <div class="flash" aria-hidden="true"></div>
 <h1>السحلوقة للتسوية المصرفية</h1>
 <p>ملوك الـ Extract</p>
-<small>اضغط للمتابعة</small>
+<small id="spHint">اضغط للمتابعة</small>
 </div>
 <script>
 /* ===== المؤثرات الصوتية (مولّدة داخل المتصفح بلا ملفات) ===== */
@@ -584,19 +586,21 @@ var SFX=(function(){
   }
   function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
   function play(scene){
-    var c=ctx(); if(!c||c.state!=='running'&&scene==='intro') return;
+    var c=ctx(); if(!c||c.state!=='running'&&scene==='intro') return false;
     try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
     var t=c.currentTime+0.03, now=function(){ return c.currentTime+0.02; };
     try{
       if(scene==='intro'){ [0.4,1.2,2.0].forEach(function(x){ S.thud(t+x); }); S.rumble(t+2.1); setTimeout(function(){ say('sahlouga'); },2150); }
       else if(scene==='laugh'){ S.thud(t); S.rumble(t); S.coins(t); say('sahlouga',function(){ S.laugh(now(),12); }); }
-      else if(scene==='bzq'){ S.thud(t); S.coins(t); say('sahlouga',function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); }); },300); }); }
+      else if(scene==='bzq'){ S.thud(t); S.coins(t); setTimeout(function(){ S.spit(now()); setTimeout(function(){ say('obzoq',function(){ S.laugh(now(),10,150); }); },300); },350); }
     }catch(e){ console.warn(e); }
+    return true;
   }
   try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
   ['pointerdown','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){ ctx(); },{once:true,capture:true}); });
   document.addEventListener('DOMContentLoaded',label);
-  return { play:play, toggle:function(){ on=!on; try{ localStorage.setItem('sfx',on?'on':'off'); }catch(e){} if(!on&&C) C.suspend(); else ctx(); label(); }, get on(){ return on; } };
+  function unlock(cb){ var c=ctx(); if(!c){ cb(false); return; } if(c.state==='running'){ cb(true); return; } c.resume().then(function(){ cb(c.state==='running'); },function(){ cb(false); }); setTimeout(function(){ cb(c.state==='running'); cb=function(){}; },400); }
+  return { play:play, unlock:function(cb){ var once=false; unlock(function(r){ if(!once){ once=true; cb(r); } }); }, toggle:function(){ on=!on; try{ localStorage.setItem('sfx',on?'on':'off'); }catch(e){} if(!on&&C) C.suspend(); else ctx(); label(); }, get on(){ return on; } };
 })();
 (function(){
   var sp=document.getElementById('splash'), T=[];
@@ -622,9 +626,22 @@ var SFX=(function(){
     SFX.play(kind);
     T.push(setTimeout(window.hideSplash,kind==='bzq'?5200:4500));
   };
-  SFX.play('intro');
-  T.push(setTimeout(window.hideSplash,reduce?2500:3000));
-  document.addEventListener('keydown',function(){ window.hideSplash(); });
+  /* المتصفح يمنع الصوت قبل أول ضغطة: إن كان الصوت مفعّلاً ينتظر المشهد الأول ضغطة ثم يبدأ من أوله بالصوت */
+  var gated=false, hint=document.getElementById('spHint');
+  function restart(){
+    var svg=sp.querySelector('svg');
+    try{ svg.setCurrentTime(0); }catch(e){}
+    [svg,sp.querySelector('.flash')].forEach(function(el){ if(!el) return; el.style.animation='none'; void el.offsetWidth; el.style.animation=''; });
+  }
+  function startIntro(){
+    gated=false; sp.classList.remove('gate'); hint.textContent='اضغط للمتابعة';
+    SFX.unlock(function(){ restart(); SFX.play('intro'); T.push(setTimeout(window.hideSplash,3800)); });
+  }
+  window.splashClick=function(){ if(gated) startIntro(); else window.hideSplash(); };
+  if(SFX.on && SFX.play('intro')) T.push(setTimeout(window.hideSplash,3800));
+  else if(SFX.on){ gated=true; sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
+  else T.push(setTimeout(window.hideSplash,reduce?2500:3000));
+  document.addEventListener('keydown',function(e){ if(gated){ if(e.key!=='Escape'){ startIntro(); return; } gated=false; } window.hideSplash(); });
 })();
 </script>
 <header class="topbar">
