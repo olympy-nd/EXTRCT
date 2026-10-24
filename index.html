@@ -269,10 +269,117 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
   .wrap{padding:16px 14px 40px;}
 }
 @media (max-width:640px){ .topbar{padding:10px 14px; position:static;} .tabs{top:0;} .topbar .sub{display:none;} table{min-width:760px;} .cards{grid-template-columns:1fr 1fr;} }
+
+/* =============== شاشة الترحيب =============== */
+.splash{position:fixed; inset:0; z-index:200; background:#0F2438; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 16px; cursor:pointer; transition:opacity .5s ease, visibility .5s;}
+.splash.out{opacity:0; visibility:hidden;}
+.splash svg{width:min(96vw,860px); height:auto; max-height:70vh;}
+.splash h1{font-size:clamp(24px,5vw,40px); font-weight:700; text-align:center; text-wrap:balance; line-height:1.3;}
+.splash p{font-size:clamp(15px,3vw,20px); color:#F2C14E; font-weight:600; letter-spacing:.5px;}
+.splash small{position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); color:#7F97AE; font-size:12px;}
+@media (prefers-reduced-motion:reduce){ .splash{transition:none;} }
 </style>
 
 </head>
 <body>
+<div class="splash" id="splash" role="dialog" aria-label="السحلوقة للتسوية المصرفية – ملوك الـ Extract" onclick="hideSplash()">
+<svg viewBox="-10 -95 700 475" aria-hidden="true">
+  <!-- الأرض -->
+  <ellipse cx="340" cy="352" rx="330" ry="15" fill="#0A1A2A"/>
+  <!-- المصرف -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" dur="0.8s" repeatCount="indefinite"
+      values="0 0;0 0;-5 3;4 -2;-2 1;0 0" keyTimes="0;0.42;0.5;0.58;0.66;1"/>
+    <rect x="40" y="318" width="250" height="22" rx="2" fill="#C9D4DF"/>
+    <rect x="52" y="304" width="226" height="16" rx="2" fill="#DCE4EC"/>
+    <rect x="62" y="186" width="206" height="20" fill="#DCE4EC"/>
+    <polygon points="48,186 165,118 282,186" fill="#E8EDF2" stroke="#B5C3D1" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="165" cy="160" r="13" fill="#F2C14E" stroke="#B88A1E" stroke-width="3"/>
+    <text x="165" y="166" text-anchor="middle" font-size="16" font-weight="700" fill="#8A6212" font-family="Arial">$</text>
+    <g fill="#E8EDF2" stroke="#B5C3D1" stroke-width="2">
+      <rect x="78" y="206" width="26" height="98"/><rect x="124" y="206" width="26" height="98"/>
+      <rect x="180" y="206" width="26" height="98"/><rect x="226" y="206" width="26" height="98"/>
+    </g>
+    <text x="165" y="201" text-anchor="middle" font-size="14" font-weight="700" fill="#16324F" font-family="Arial">مصرف</text>
+    <!-- الشقوق تظهر مع كل ضربة -->
+    <g fill="none" stroke="#16324F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+      <animate attributeName="opacity" dur="0.8s" repeatCount="indefinite" values="0;0;1;1;0.6" keyTimes="0;0.45;0.5;0.85;1"/>
+      <polyline points="236,150 222,166 230,178 214,196 222,214"/>
+      <polyline points="252,206 244,236 254,258 246,290"/>
+      <polyline points="200,140 190,154 198,162"/>
+    </g>
+  </g>
+  <!-- الشظايا -->
+  <g fill="#C9D4DF">
+    <polygon points="0,0 12,-4 8,8">
+      <animateTransform attributeName="transform" type="translate" dur="0.8s" repeatCount="indefinite" values="240 160;240 160;240 160;205 95;180 120" keyTimes="0;0.46;0.5;0.8;1"/>
+      <animate attributeName="opacity" dur="0.8s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.46;0.5;0.8;1"/>
+    </polygon>
+    <polygon points="0,0 10,2 4,10">
+      <animateTransform attributeName="transform" type="translate" dur="0.8s" repeatCount="indefinite" values="245 170;245 170;245 170;290 110;305 140" keyTimes="0;0.46;0.5;0.8;1"/>
+      <animate attributeName="opacity" dur="0.8s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.46;0.5;0.8;1"/>
+    </polygon>
+    <polygon points="0,0 8,-6 12,4 2,8" fill="#F2C14E">
+      <animateTransform attributeName="transform" type="translate" dur="0.8s" repeatCount="indefinite" values="230 175;230 175;230 175;170 80;150 110" keyTimes="0;0.46;0.5;0.8;1"/>
+      <animate attributeName="opacity" dur="0.8s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.46;0.5;0.8;1"/>
+    </polygon>
+  </g>
+  <g transform="translate(440 342) scale(1.32) translate(-440 -342)">
+  <!-- التمساح -->
+  <g stroke="#1E4D27" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <!-- الذيل -->
+    <path d="M500 300 C 560 300, 600 330, 612 350 C 585 346, 540 338, 495 330 Z" fill="#3F8F4A"/>
+    <path d="M540 312 l8 -10 l6 12 M570 322 l8 -9 l5 12" fill="none"/>
+    <!-- الساقان -->
+    <path d="M408 300 v40 h-30" fill="none" stroke-width="18" stroke="#3F8F4A"/>
+    <path d="M478 300 v40 h-30" fill="none" stroke-width="18" stroke="#3F8F4A"/>
+    <path d="M408 300 v40 h-30 M478 300 v40 h-30" fill="none" stroke-width="4"/>
+    <!-- الجسم -->
+    <ellipse cx="445" cy="250" rx="68" ry="82" fill="#3F8F4A"/>
+    <ellipse cx="432" cy="262" rx="40" ry="60" fill="#A7D08C" stroke-width="3"/>
+    <path d="M410 230 h44 M406 252 h52 M408 274 h48 M414 296 h36" fill="none" stroke="#6FA85A" stroke-width="3"/>
+    <!-- نتوءات الظهر -->
+    <path d="M492 190 l14 4 l-6 12 M506 222 l14 2 l-8 12 M510 256 l14 0 l-9 12" fill="#2F7A3B"/>
+    <!-- الرأس والفك -->
+    <path d="M455 150 C 440 120, 395 118, 370 132 L 300 140 C 286 142, 284 160, 298 162 L 380 170 C 410 176, 452 178, 455 150 Z" fill="#3F8F4A"/>
+    <path d="M378 176 L 304 178 C 292 179, 292 194, 304 194 L 392 196 C 420 198, 440 190, 446 178 Z" fill="#3F8F4A"/>
+    <path d="M308 162 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10 l6 10 l6 -10" fill="#FFFFFF" stroke-width="2"/>
+    <path d="M314 178 l6 -9 l6 9 l6 -9 l6 9 l6 -9 l6 9 l6 -9 l6 9 l6 -9" fill="#FFFFFF" stroke-width="2"/>
+    <circle cx="300" cy="146" r="4" fill="#1E4D27" stroke="none"/>
+    <!-- العين -->
+    <circle cx="420" cy="122" r="20" fill="#3F8F4A"/>
+    <circle cx="420" cy="122" r="13" fill="#FFFFFF" stroke-width="3"/>
+    <circle cx="414" cy="123" r="6" fill="#16324F" stroke="none"/>
+    <path d="M402 104 l34 10" fill="none" stroke-width="6"/>
+  </g>
+  <!-- المطرقة والذراع -->
+  <g>
+    <animateTransform attributeName="transform" type="rotate" dur="0.8s" repeatCount="indefinite"
+      values="46 430 228;46 430 228;14 430 228;14 430 228;46 430 228" keyTimes="0;0.25;0.5;0.62;1"
+      calcMode="spline" keySplines="0 0 1 1;0.6 0 1 1;0 0 1 1;0.3 0 0.4 1"/>
+    <rect x="236" y="221" width="196" height="14" rx="6" fill="#8B5A2B" stroke="#5C3A19" stroke-width="3"/>
+    <rect x="200" y="186" width="52" height="84" rx="8" fill="#9AA5B1" stroke="#5E6A76" stroke-width="4"/>
+    <rect x="206" y="194" width="10" height="68" rx="3" fill="#C9D2DB"/>
+    <path d="M470 236 C 455 236, 440 232, 430 228" fill="none" stroke="#3F8F4A" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="428" cy="228" r="14" fill="#3F8F4A" stroke="#1E4D27" stroke-width="4"/>
+  </g>
+  </g>
+</svg>
+<h1>السحلوقة للتسوية المصرفية</h1>
+<p>ملوك الـ Extract</p>
+<small>اضغط للمتابعة</small>
+</div>
+<script>
+(function(){
+  var sp=document.getElementById('splash');
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){
+    sp.querySelectorAll('animate,animateTransform').forEach(function(a){ a.remove(); });
+  }
+  window.hideSplash=function(){ if(!sp||sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(function(){ sp.remove(); },550); };
+  setTimeout(window.hideSplash,3400);
+  document.addEventListener('keydown',function(){ window.hideSplash(); },{once:true});
+})();
+</script>
 <header class="topbar">
   <div class="brand">
     <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#0F2438" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18M12 3l9 5H3z"/></svg></div>
