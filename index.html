@@ -175,6 +175,13 @@ button,input,select{font-family:inherit;}
 .modes{display:flex; background:var(--canvas); border:1px solid var(--line); border-radius:var(--r-s); padding:3px; gap:3px;}
 .modes button{flex:1; border:0; background:none; color:var(--muted); padding:7px 8px; cursor:pointer; font-size:12.5px; font-weight:500; border-radius:4px;}
 .modes button:hover{color:var(--ink-2);}
+.modes{flex-wrap:wrap;}
+.modes button{white-space:nowrap; flex:1 1 auto;}
+.modes .mcustom,.hdmodes .mcustom{display:flex; align-items:center; gap:4px; border-radius:4px; color:var(--muted); cursor:pointer; font-weight:500; white-space:nowrap;}
+.modes .mcustom{flex:1 1 auto; justify-content:center; padding:4px 8px; font-size:12.5px;}
+.hdmodes .mcustom{padding:2px 8px; font-size:12px;}
+.mcustom.on{background:#fff; color:var(--ink-2); font-weight:600; box-shadow:0 1px 2px rgba(15,36,56,.12);}
+.mdays{width:46px; padding:2px 4px; border:1px solid var(--line); border-radius:4px; font:inherit; text-align:center; background:#fff; color:var(--text);}
 .modes button.on{background:#fff; color:var(--ink-2); font-weight:600; box-shadow:0 1px 2px rgba(15,36,56,.12);}
 
 /* =============== شريط التحكم في لوحة النتائج =============== */
@@ -756,9 +763,11 @@ var SFX=(function(){
 <div class="controlbar" id="ctrlBar">
   <div class="cgrp"><span>شرط التاريخ</span>
     <div class="hdmodes" id="hdModes" style="display:none">
-      <button type="button" data-mode="exact"  onclick="setMode('exact',true)">مطابق</button>
-      <button type="button" data-mode="oneday" onclick="setMode('oneday',true)">يوم واحد</button>
-      <button type="button" data-mode="loose"  onclick="setMode('loose',true)">±3 ثم ±7</button>
+      <button type="button" data-mode="exact"  onclick="setMode('exact')">مطابق</button>
+      <button type="button" data-mode="oneday" onclick="setMode('oneday')">يوم واحد</button>
+      <button type="button" data-mode="d3"     onclick="setMode('d3')">3 أيام</button>
+      <button type="button" data-mode="d7"     onclick="setMode('d7')">7 أيام</button>
+      <label class="mcustom" data-mode="custom" onclick="if(event.target.tagName!=='INPUT') setMode('custom')">يدوي <input class="mdays" type="number" min="0" max="365" inputmode="numeric" value="5" aria-label="عدد الأيام" oninput="setCustomDays(this)" onfocus="setCustomDays(this)"> يوم</label>
     </div>
   </div>
   <button class="btn" id="starBtn" style="display:none" onclick="toggleStar()"><span id="starChip">تواريخ النجمة</span></button>
@@ -813,9 +822,11 @@ var SFX=(function(){
         <div class="field">
           <span class="flabel">شرط التاريخ</span>
           <div class="modes" id="modeBtns">
-            <button type="button" data-mode="exact" class="on m0" onclick="setMode('exact')">مطابق تماماً</button>
-            <button type="button" data-mode="oneday" onclick="setMode('oneday')">يوم واحد</button>
-            <button type="button" data-mode="loose" onclick="setMode('loose')">±3 ثم ±7</button>
+            <button type="button" data-mode="exact" onclick="setMode('exact')">مطابق تماماً</button>
+            <button type="button" data-mode="oneday" class="on" onclick="setMode('oneday')">يوم واحد</button>
+            <button type="button" data-mode="d3" onclick="setMode('d3')">3 أيام</button>
+            <button type="button" data-mode="d7" onclick="setMode('d7')">7 أيام</button>
+            <label class="mcustom" data-mode="custom" onclick="if(event.target.tagName!=='INPUT') setMode('custom')">يدوي <input class="mdays" type="number" min="0" max="365" inputmode="numeric" value="5" aria-label="عدد الأيام" oninput="setCustomDays(this)" onfocus="setCustomDays(this)"> يوم</label>
           </div>
           <div class="fhelp">مقارنة تاريخ الحوالة في بيان الدفتر بتاريخ الحركة في الكشف. لا يؤثر على المطابقة بالرقم المرجعي.</div>
         </div>
@@ -1305,8 +1316,8 @@ var SFX=(function(){
 
   /* ---------- محرك المطابقة (مطابق حرفياً لتسلسل محرك بايثون) ---------- */
   function reconcile(bank, far, adr, START, END, opts) {
-    /* dateMode: 'exact' = فارق 0 يوم فقط | 'oneday' = حتى يوم واحد | 'loose' = ±3 ثم ±7 (الافتراضي) */
-    let dateMode = (opts && opts.dateMode) || ((opts && opts.exactDate) ? 'exact' : 'loose');
+    /* maxDays: أقصى فارق مسموح بالأيام بين تاريخ البيان وتاريخ الكشف (0 = تطابق تام). الافتراضي يوم واحد */
+    let maxDays = (opts && isFinite(opts.maxDays)) ? Math.max(0, Math.floor(opts.maxDays)) : ((opts && opts.exactDate) ? 0 : 1);
     const usedB = new Set(), usedF = new Set(), usedA = new Set();
     const mf = [], ma = [];
 
@@ -1364,15 +1375,8 @@ var SFX=(function(){
         usedB.add(bi);
       }
     }
-    if (dateMode === 'exact') {
-      datePass(0, 'القيمة والتاريخ');                 // تطابق تام: فارق 0 يوم فقط
-    } else if (dateMode === 'oneday') {
-      datePass(0, 'القيمة والتاريخ');                 // الأولوية للتطابق التام
-      datePass(1, 'القيمة والتاريخ');                 // ثم فارق يوم واحد كحد أقصى
-    } else {
-      datePass(3, 'القيمة والتاريخ');
-      datePass(7, 'القيمة وتقارب التاريخ');
-    }
+    datePass(0, 'القيمة والتاريخ');                   // الأولوية للتطابق التام
+    if (maxDays > 0) datePass(maxDays, 'القيمة والتاريخ'); // ثم الأقرب فالأقرب حتى الحد المختار
 
     // تصنيف غير المتطابق
     const periodNote = (bdt, pdt) => {
@@ -1674,12 +1678,16 @@ function closeMapFor(ledger, pairs){
   return {used, missing};
 }
 const names = {bank:null, far:null, adr:null, chart:null};
-let R=null, BANK=null, FAR=null, FAR_ALL=null, SP=null, ADR=null, SD=null, ED=null, SUM=null, HAS_FAR=false, HAS_ADR=false, MODE='exact', STAR=false;
+let R=null, BANK=null, FAR=null, FAR_ALL=null, SP=null, ADR=null, SD=null, ED=null, SUM=null, HAS_FAR=false, HAS_ADR=false, MODE='oneday', CUSTOM_DAYS=5, STAR=false;
 /* وضع التسوية: حركات آخر ورقة بمذكرة التسوية تُضاف إلى حركات كشف المصرف */
 let GROUP_SRC=false;
 let TREASURY=false, MEMO=null, MEMO_IDX=0, MEMO_INFO=null, MEMO_NAME='', MEMO_ROWS=[], BANK_BASE=[];
 const SRCN=()=>TREASURY?'مذكرة التسوية (بديل كشف المصرف)':'كشف المصرف';
-const MODE_LABEL={exact:'مطابق تماماً (0 يوم)', oneday:'فارق يوم واحد كحد أقصى', loose:'متسامح (±3 ثم ±7 أيام)'};
+/* شرط التاريخ: exact=0، oneday=1، d3=3، d7=7، custom=عدد يدوي */
+const MODE_DAYS={exact:0, oneday:1, d3:3, d7:7};
+function modeDays(){ return MODE==='custom'?CUSTOM_DAYS:MODE_DAYS[MODE]; }
+function dayWord(n){ return n===1?'يوم واحد':n===2?'يومين':(n>=3&&n<=10)?n+' أيام':n+' يوماً'; }
+function modeLabel(){ const n=modeDays(); return n===0?'مطابق تماماً (0 يوم)':('فارق حتى '+dayWord(n)+(MODE==='custom'?' (يدوي)':'')); }
 
 const $ = id => document.getElementById(id);
 const fmt = v => (v==null||v==='') ? '-' : Number(v).toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
@@ -1869,7 +1877,7 @@ function run(){
       ADR=HAS_ADR?E.parseLedger(parsed.adr,'adr',infos.adr):[];
       const p=v=>{const [y,m,d]=v.split('-').map(Number); return E.toDays(y,m,d);};
       SD=p($('pStart').value); ED=p($('pEnd').value);
-      R=E.reconcile(BANK,FAR,ADR,SD,ED,{dateMode:MODE});
+      R=E.reconcile(BANK,FAR,ADR,SD,ED,{maxDays:modeDays()});
       buildSummary();
       renderDash();
       $('uploadScreen').style.display='none';
@@ -1890,11 +1898,10 @@ function run(){
 
 function updateModeChip(){
   const c=$('modeChip');
-  c.textContent='شرط التاريخ: '+MODE_LABEL[MODE];
-  c.className='modechip'+(MODE==='loose'?'':' strict');
-  document.querySelectorAll('#modeBtns button').forEach(b=>{
-    b.className=(b.dataset.mode===MODE)?('on '+(MODE==='exact'?'m0':MODE==='oneday'?'m1':'')):'';});
-  document.querySelectorAll('#hdModes button').forEach(b=>b.className=(b.dataset.mode===MODE)?'on':'');
+  c.textContent='شرط التاريخ: '+modeLabel();
+  c.className='modechip'+(modeDays()>3?'':' strict');
+  document.querySelectorAll('#modeBtns [data-mode],#hdModes [data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===MODE));
+  document.querySelectorAll('.mdays').forEach(i=>{ if(document.activeElement!==i) i.value=CUSTOM_DAYS; });
   const sb=$('starChip'); if(sb){ sb.textContent = STAR?'تواريخ النجمة: مفعّلة':'تواريخ النجمة: معطّلة';
     sb.className='modechip'+(STAR?' star':''); }
   const sw=$('swStarHd'); if(sw) sw.checked=STAR;
@@ -1907,7 +1914,7 @@ function recompute(){
   FAR_ALL=HAS_FAR?E.parseLedger(parsed.far,'far',infos.far):[];
   SP=E.splitPriorSettlements(FAR_ALL); FAR=SP.active;
   ADR=HAS_ADR?E.parseLedger(parsed.adr,'adr',infos.adr):[];
-  R=E.reconcile(BANK,FAR,ADR,SD,ED,{dateMode:MODE});
+  R=E.reconcile(BANK,FAR,ADR,SD,ED,{maxDays:modeDays()});
   buildSummary();
   const cur=document.querySelector('.tab.active');
   const curId=cur?cur.dataset.id:'summary';
@@ -1918,9 +1925,18 @@ function toggleStar(){
   const cb=$('swStar'); if(cb) cb.checked=STAR;
   if(R) recompute(); else updateModeChip();
 }
-function setMode(m, rerun){
+function setMode(m){
   MODE=m;
-  if(rerun && R) recompute(); else updateModeChip();
+  if(R) recompute(); else updateModeChip();
+}
+/* إدخال عدد الأيام يدوياً */
+let CD_T=null;
+function setCustomDays(inp){
+  const n=parseInt(inp.value,10);
+  if(!isFinite(n)||n<0) return;
+  CUSTOM_DAYS=Math.min(n,365); MODE='custom';
+  document.querySelectorAll('.mdays').forEach(i=>{ if(i!==inp) i.value=CUSTOM_DAYS; });
+  clearTimeout(CD_T); CD_T=setTimeout(()=>{ if(R) recompute(); else updateModeChip(); },350);
 }
 function loadCloseChart(file){
   if(!file) return;
@@ -2181,7 +2197,7 @@ function renderSummary(){
   '</div>'+
   '<div class="notesbox"><div class="h">منهجية وملاحظات المراجع</div><ul>'+
   ((TREASURY&&MEMO_ROWS.length)?('<li><b>وضع التسوية:</b> حركات مذكرة التسوية «'+esc(MEMO[MEMO_IDX].sheet)+'» (آخر ورقة بالملف) أُضيفت إلى حركات كشف المصرف ودخلت المطابقة معها في آن واحد – المذكرة لا تحل محل الكشف. كل بند في قسم <b>«يضاف إلى مدين الدفاتر»</b> احتُسب <b>حركة دائنة بالمصرف</b> (حوالة واردة للشركة) ودخل المطابقة مع <b>مدين الدفاتر</b>، وكل بند في قسم <b>«يضاف إلى دائن الدفاتر»</b> احتُسب <b>حركة مدينة بالمصرف</b> (حوالة صادرة/عمولة) ودخل المطابقة مع <b>دائن الدفاتر</b>، بنفس مراحل مطابقة حركة كشف المصرف وفي كل الأوراق. أما بنود <b>«يخصم من دائن/مدين الدفاتر»</b> فبنود دفترية لا تمثل حركة مصرفية، استُبعدت من المطابقة وعُرضت في ورقة «مذكرة التسوية (المصدر)» للمراجعة'+'.</li>'):'')+
-  '<li>منهجية المطابقة: (1) تطابق الرقم المرجعي مع القيمة – مراجع المصرف MT تقابل مراجع الحوالات بالدفاتر بعد حذف البادئة، (2) تطابق القيمة مع تاريخ الحوالة المستخرج من عمود البيان بالدفاتر حصراً (لا يُستخدم تاريخ القيد) '+(MODE==='exact'?'بتطابق تام في التاريخ (فارق 0 يوم)':MODE==='oneday'?'بفارق لا يتجاوز يوماً واحداً (تُقدَّم المطابقات التامة أولاً)':'بفارق لا يتجاوز 3 أيام، (3) ثم تقارب تاريخ البيان حتى 7 أيام')+' (حوالات الدفع المحمول C65/C51/C64 لا تحمل نفس مرجع المصرف). القيود التي لا يتضمن بيانها تاريخاً لا تدخل مرحلة التاريخ. كل حركة مصرف قوبلت بقيد دفتري واحد فقط (مطابقة واحد لواحد).</li>'+
+  '<li>منهجية المطابقة: (1) تطابق الرقم المرجعي مع القيمة – مراجع المصرف MT تقابل مراجع الحوالات بالدفاتر بعد حذف البادئة، (2) تطابق القيمة مع تاريخ الحوالة المستخرج من عمود البيان بالدفاتر حصراً (لا يُستخدم تاريخ القيد) '+(modeDays()===0?'بتطابق تام في التاريخ (فارق 0 يوم)':'بفارق لا يتجاوز '+dayWord(modeDays())+(MODE==='custom'?' (حد يدوي)':'')+' (تُقدَّم المطابقات التامة ثم الأقرب تاريخاً)')+' (حوالات الدفع المحمول C65/C51/C64 لا تحمل نفس مرجع المصرف). القيود التي لا يتضمن بيانها تاريخاً لا تدخل مرحلة التاريخ. كل حركة مصرف قوبلت بقيد دفتري واحد فقط (مطابقة واحد لواحد).</li>'+
   '<li>أساس المطابقة مبيّن في عمود مستقل بكل ورقة، مع بيانات الطرفين جنباً إلى جنب للمراجعة.</li>'+
   (memoOn()?'<li><b>تمييز المصدر:</b> لكل ورقة عمود «المصدر» يحمل شارة «كشف» أو «مذ»، وحركات المذكرة مرقّمة بصيغة مذ-1، مذ-2 … ومظللة بلون فاتح مع حافة كهرمانية. عند المرور بمؤشر الفأرة فوق الشارة يظهر مرجع البند داخل ملف المذكرة (اسم الورقة والقسم ورقم الصف). ويمكن قصر العرض على مصدر واحد من أزرار التصفية أعلى كل جدول، أو فصل المصدرين في مجموعتين بإجمالي مستقل لكل منهما من زر «تجميع حسب المصدر» أعلى اللوحة.</li>':'')+
   '<li>الحركات الدائنة بدفتر الفرع تمثل إقفالاً لحركات مدينة من تسويات سابقة: يُستبعد كل زوج (مدين/دائن) متقابل من المطابقة، ويُستبعد أي دائن بلا مقابل باعتباره من تسوية سابقة، وتُعرض جميعها في ورقة "تسويات سابقة - فرع" للمراجعة.</li>'+
@@ -2227,7 +2243,7 @@ function renderBankOnly0(){
 }
 function renderMatched(id,ttl,pairs,ledger,isFar){
   return '<div class="sheettitle">'+ttl+'</div>'+
-  '<div class="sheetsub">عدد الحركات المتطابقة: '+pairs.length+' حركة – مطابقة واحد لواحد (كل حركة مصرف تقابل قيداً دفترياً واحداً) – شرط التاريخ: '+MODE_LABEL[MODE]+'</div>'+
+  '<div class="sheetsub">عدد الحركات المتطابقة: '+pairs.length+' حركة – مطابقة واحد لواحد (كل حركة مصرف تقابل قيداً دفترياً واحداً) – شرط التاريخ: '+modeLabel()+'</div>'+
   tools(id)+'<div class="tblbox"><table id="tbl-'+id+'">'+matchedGroupBar(isFar?'دفتر الفرع':'دفتر الادارة')+matchedHead()+matchedHTML(pairs,ledger,isFar)+'</table></div>';
 }
 /* إظهار الحركات التي لا مقابل لها بالدفاتر – معطّل افتراضياً، ويُفعّل لكل مصدر على حدة */
@@ -3116,7 +3132,7 @@ function exportExcel0(outFmt){
   const styled = XW!==XLSX;
   const wb=XW.utils.book_new(); const s=SUM;
   const period='الفترة من '+E.fmtPad(SD)+' حتى '+E.fmtPad(ED);
-  const modeTxt='شرط التاريخ: '+MODE_LABEL[MODE];
+  const modeTxt='شرط التاريخ: '+modeLabel();
 
   /* --- 1) ملخص التسوية --- */
   const S1=new Sheet();
@@ -3160,7 +3176,7 @@ function exportExcel0(outFmt){
   S1.section('منهجية وملاحظات المراجع',3);
   [
    ...((TREASURY&&MEMO_ROWS.length)?['وضع التسوية: أُضيفت حركات آخر ورقة بمذكرة التسوية («'+MEMO[MEMO_IDX].sheet+'») إلى حركات كشف المصرف كحركات إضافية – المذكرة لا تحل محل الكشف. كل بند في قسم «يضاف إلى مدين الدفاتر» احتُسب حركة دائنة بالمصرف (حوالة واردة) وطُوبق مع مدين الدفاتر، وكل بند في قسم «يضاف إلى دائن الدفاتر» احتُسب حركة مدينة بالمصرف (حوالة صادرة/عمولة) وطُوبق مع دائن الدفاتر – بنفس إجراءات كشف المصرف وفي كل الأوراق. بنود «يخصم من دائن/مدين الدفاتر» بنود دفترية مستبعدة من المطابقة.']:[]),
-   'المطابقة تمت على مرحلتين: تطابق الرقم المرجعي مع القيمة، ثم تطابق القيمة مع تاريخ الحوالة المستخرج من عمود البيان بالدفاتر حصراً ('+MODE_LABEL[MODE]+')'+(STAR?' مع تفعيل قراءة التواريخ المفصولة بنجمة (*)':'')+'.',
+   'المطابقة تمت على مرحلتين: تطابق الرقم المرجعي مع القيمة، ثم تطابق القيمة مع تاريخ الحوالة المستخرج من عمود البيان بالدفاتر حصراً ('+modeLabel()+')'+(STAR?' مع تفعيل قراءة التواريخ المفصولة بنجمة (*)':'')+'.',
    'كل حركة مصرف قوبلت بقيد دفتري واحد فقط (مطابقة واحد لواحد)، وأساس المطابقة مبيّن في عمود مستقل بكل ورقة.',
    ...(memoOn()?['تمييز المصدر: لكل ورقة عمود «المصدر» يفصل حركات كشف المصرف عن حركات مذكرة التسوية، وحركات المذكرة مرقّمة بصيغة مذ-1، مذ-2 … وخلاياها بخلفية كهرمانية، ومرجع البند داخل ملف المذكرة (الورقة والقسم ورقم الصف) مدوّن ضمن عمود أساس المطابقة أو الملاحظات، والفلتر التلقائي مفعّل على صف الرأس للفرز حسب المصدر.']:[]),
    'التحقق: مجموع (المتطابق + غير المتطابق بالمصرف) يساوي تماماً إجماليي الكشف الدائن والمدين.',
@@ -3566,7 +3582,7 @@ function exportExcel0(outFmt){
   };
   const base=(expMode==='seraj'?'قيود_سراج_':expMode==='odoo'?'قيود_odoo_':(TREASURY?'مذكرة_التسوية_':'التسوية_المصرفية_'))
     +E.fmtPad(SD).replace(/\//g,'-')+'_حتى_'+E.fmtPad(ED).replace(/\//g,'-')
-    +(expMode==='all'?(MODE==='exact'?'_تاريخ_مطابق':MODE==='oneday'?'_فارق_يوم':''):'');
+    +(expMode==='all'?(modeDays()===0?'_تاريخ_مطابق':'_فارق_'+modeDays()+'_يوم'):'');
   if(outFmt==='xls')          downloadXls(wb, base+'.xls');                       // 97-2003 مع التنسيق (SpreadsheetML)
   else if(outFmt==='xlsbin')  XW.writeFile(wb, base+'.xls', {bookType:'biff8'});  // 97-2003 ثنائي أصلي بلا تنسيق
   else                        XW.writeFile(wb, base+'.xlsx',{cellStyles:true});   // منسّق بالكامل
