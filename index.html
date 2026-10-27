@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>/* المشاهد والأصوات: تُقرأ قبل الرسم حتى لا تومض شاشة الترحيب عند إيقافها */try{if(localStorage.getItem('fx')==='off')document.documentElement.classList.add('nofx');}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -293,6 +294,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 
 /* =============== شاشة الترحيب =============== */
 .splash{position:fixed; inset:0; z-index:200; background:#0F2438; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 16px; cursor:pointer; transition:opacity .5s ease, visibility .5s;}
+.nofx .splash{display:none!important;}
 .splash.out{opacity:0; visibility:hidden;}
 .splash[hidden]{display:none;}
 .splash svg{width:min(96vw,860px); height:auto; max-height:70vh;}
@@ -538,7 +540,7 @@ tr.subrow > td{background:#FFFBF5; font-size:12px; color:#7A4A18;}
 /* ===== المؤثرات الصوتية (مولّدة داخل المتصفح بلا ملفات) ===== */
 var SFX=(function(){
   var C=null, on=true, NB=null;
-  try{ on=localStorage.getItem('sfx')!=='off'; }catch(e){}
+  try{ on=localStorage.getItem('fx')!=='off'; }catch(e){}
   function ctx(){
     if(!on) return null;
     if(!C){ var A=window.AudioContext||window.webkitAudioContext; if(!A) return null; try{ C=new A(); }catch(e){ return null; } setTimeout(warm,0); }
@@ -642,7 +644,7 @@ var SFX=(function(){
       wd=setTimeout(end,4500);
     }catch(e){ end(); }
   }
-  function label(){ var b=document.getElementById('btnSfx'); if(b) b.textContent='الأصوات: '+(on?'تشغيل':'إيقاف'); }
+  function label(){ var b=document.getElementById('btnSfx'); if(b){ b.textContent='المشاهد والأصوات: '+(on?'تشغيل':'إيقاف'); b.setAttribute('aria-pressed',on?'true':'false'); } }
   /* done: يُستدعى عند انتهاء أصوات المشهد وكلامه بالكامل */
   function play(scene,done){
     var c=ctx(); if(!c||c.state!=='running'&&scene==='intro') return false;
@@ -660,7 +662,10 @@ var SFX=(function(){
   ['pointerdown','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){ ctx(); },{once:true,capture:true}); });
   document.addEventListener('DOMContentLoaded',label);
   function unlock(cb){ var c=ctx(); if(!c){ cb(false); return; } if(c.state==='running'){ cb(true); return; } c.resume().then(function(){ cb(c.state==='running'); },function(){ cb(false); }); setTimeout(function(){ cb(c.state==='running'); cb=function(){}; },400); }
-  return { play:play, unlock:function(cb){ var once=false; unlock(function(r){ if(!once){ once=true; cb(r); } }); }, toggle:function(){ on=!on; try{ localStorage.setItem('sfx',on?'on':'off'); }catch(e){} if(!on&&C) C.suspend(); else ctx(); label(); }, get on(){ return on; } };
+  return { play:play, unlock:function(cb){ var once=false; unlock(function(r){ if(!once){ once=true; cb(r); } }); }, toggle:function(){ on=!on; try{ localStorage.setItem('fx',on?'on':'off'); }catch(e){}
+    document.documentElement.classList.toggle('nofx',!on);
+    if(!on){ try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){} if(C) C.suspend(); if(window.stopScenes) window.stopScenes(); } else ctx();
+    label(); }, get on(){ return on; } };
 })();
 (function(){
   var sp=document.getElementById('splash'), T=[];
@@ -674,8 +679,10 @@ var SFX=(function(){
     T.push(setTimeout(function(){ sp.hidden=true; sp.classList.remove('out','p2','p3','bz'); },550));
   };
   /* kind: 'laugh' بعد المطابقة، 'bzq' بعد التصدير */
+  /* إيقاف المشاهد فوراً (عند تعطيل المشاهد والأصوات) */
+  window.stopScenes=function(){ clear(); SCENE++; gated=false; if(sp){ sp.hidden=true; sp.classList.remove('out','p2','p3','bz','gate'); } };
   window.showLaugh=function(kind){
-    if(!sp) return;
+    if(!sp||!SFX.on) return;
     kind=kind==='bzq'?'bzq':'laugh';
     clear(); sp.classList.remove('out','p2','p3','bz'); sp.hidden=false;
     if(kind==='bzq'){ t1.textContent='بزق!'; t2.textContent='هههههههههه'; sp.classList.add('bz'); }
@@ -716,7 +723,7 @@ var SFX=(function(){
       else { sp.classList.add('gate'); hint.textContent='🔊 اضغط في أي مكان للتشغيل بالصوت'; }
     });
   }
-  else T.push(setTimeout(window.hideSplash,reduce?2500:3000));
+  else window.stopScenes();   // المشاهد والأصوات معطّلة: تفتح المنظومة مباشرة
   document.addEventListener('keydown',function(e){ if(gated){ if(e.key!=='Escape'){ startIntro(); return; } gated=false; } window.hideSplash(); });
 })();
 </script>
@@ -750,7 +757,7 @@ var SFX=(function(){
         <hr>
         <button class="btn" id="btnChart" style="display:none" onclick="closeMenu();document.getElementById('chartInput').click()">دليل الحسابات</button>
         <button class="btn" id="btnClose" style="display:none" onclick="closeMenu();document.getElementById('closeInput').click()" title="استبدال دليل حسابات الإقفال المستخدم في قيد الإقفال">دليل الإقفال</button>
-        <button class="btn" id="btnSfx" onclick="closeMenu();SFX.toggle()">الأصوات: تشغيل</button>
+        <button class="btn" id="btnSfx" onclick="closeMenu();SFX.toggle()" title="شاشة الترحيب ومشاهد التمساح وأصواتها">المشاهد والأصوات: تشغيل</button>
         <hr>
         <button class="btn" id="btnReset" style="display:none" onclick="location.reload()">بدء تسوية جديدة</button>
       </div>
