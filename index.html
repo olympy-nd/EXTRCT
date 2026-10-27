@@ -3118,6 +3118,10 @@ function downloadXls(wb, filename){
 }
 
 const xSrcLabel=b=>isMemoB(b)?'مذكرة التسوية':'كشف المصرف';
+/* عمود منفصل لموقع حركة المذكرة: يظهر فقط إن وُجدت بالورقة حركات من مذكرة التسوية */
+const MEMO_COL='موقع الحركة بمذكرة التسوية';
+const hasMemoPairs=pairs=>memoOn()&&pairs.some(x=>isMemoB(BANK[x[0]]));
+const memoLoc=b=>isMemoB(b)?memoRefOf(b):'';
 const xMemoNote=b=>isMemoB(b)?('['+memoRefOf(b)+'] '):'';
 const xKinds=(K,b)=>isMemoB(b)?K.map(k=>k==='bank'?'memo':k):K;
 const IX=i=>memoOn()?i:i-1;
@@ -3339,11 +3343,13 @@ function exportExcel0(outFmt){
   NOSRC=false;
 
   /* --- 3/4) الأوراق المتطابقة --- */
-  const MC=['م','تاريخ الحركة','الرقم المرجعي','بيان المصرف','دائن (+)','مدين (-)','رقم السند','تاريخ القيد','مرجع الدفتر','بيان الدفتر','المبلغ','أساس المطابقة'];
-  const MK=dropSrc(['neu','bank','bank','bank','bank','bank','bank','led','led','led','led','led','neu']);
-  const MT=dropSrc(['cen','cen','cen','txt','txt','num','num','cen','cen','txt','txt','num','txt']);
-  const NM=12+SC();
+  const MC0=dropSrc(['م','المصدر','تاريخ الحركة','الرقم المرجعي','بيان المصرف','دائن (+)','مدين (-)','رقم السند','تاريخ القيد','مرجع الدفتر','بيان الدفتر','المبلغ','أساس المطابقة']);
+  const MK0=dropSrc(['neu','bank','bank','bank','bank','bank','bank','led','led','led','led','led','neu']);
+  const MT0=dropSrc(['cen','cen','cen','txt','txt','num','num','cen','cen','txt','txt','num','txt']);
   const matchedSheet=(pairs,ledger,isFar,ttl,name,ledLabel)=>{
+    const HM=hasMemoPairs(pairs);
+    const MC=HM?MC0.concat(MEMO_COL):MC0, MK=HM?MK0.concat('neu'):MK0, MT=HM?MT0.concat('txt'):MT0;
+    const NM=12+SC()+(HM?1:0);
     const S=new Sheet();
     S.title(ttl,NM); S.subtitle(period+' – عدد الحركات المتطابقة: '+pairs.length+(memoOn()?(' – منها '+pairs.filter(x=>isMemoB(BANK[x[0]])).length+' من مذكرة التسوية'):'')+' – مطابقة واحد لواحد – '+modeTxt,NM);
     S.blank();
@@ -3351,15 +3357,15 @@ function exportExcel0(outFmt){
     S.groupBar([{from:0,to:0,label:'م',kind:'neu'},
                 {from:1,to:IX(6),label:'◄ بيانات كشف المصرف ►',kind:'bank'},
                 {from:IX(7),to:IX(11),label:'◄ بيانات '+ledLabel+' ►',kind:'led'},
-                {from:IX(12),to:IX(12),label:'المطابقة',kind:'neu'}]);
+                {from:IX(12),to:IX(12)+(HM?1:0),label:'المطابقة',kind:'neu'}]);
     S.headerMixed(MC,MK);
     const one=list=>{
       let cr=0,dr=0,led=0,kb=0,km=0;
       list.forEach((x,k)=>{ const b=BANK[x[0]],l=ledger[x[1]]; const amt=(isFar||l.debit>0)?l.debit:l.credit;
         cr+=b.credit; dr+=b.debit; led+=amt;
         const no=isMemoB(b)?('مذ-'+(++km)):String(++kb);
-        S.rowMixed(dropSrc([no,xSrcLabel(b),b.dateStr,b.ref,b.bayan,b.credit||'',b.debit||'',l.sanad,E.fmtPad(l.pdt),l.ref,l.bayan,amt,
-          x[2]+(isMemoB(b)?(' – '+memoRefOf(b)):'')]),xKinds(MK,b),MT,k%2===1); });
+        const vals=dropSrc([no,xSrcLabel(b),b.dateStr,b.ref,b.bayan,b.credit||'',b.debit||'',l.sanad,E.fmtPad(l.pdt),l.ref,l.bayan,amt,x[2]]);
+        S.rowMixed(HM?vals.concat(memoLoc(b)):vals,xKinds(MK,b),MT,k%2===1); });
       return {cr,dr,led,n:list.length};
     };
     if(!groupOn()){ const r=one(pairs); S.total('الإجمالي',NM,{[IX(5)]:r.cr,[IX(6)]:r.dr,[IX(11)]:r.led}); }
@@ -3369,7 +3375,7 @@ function exportExcel0(outFmt){
       if(sp.memo.length){ S.section('◄ حركات من مذكرة التسوية – '+sp.memo.length+' حركة',NM); S.headerMixed(MC,MK); const m=one(sp.memo); tc+=m.cr;td+=m.dr;tl+=m.led; S.total('إجمالي حركات مذكرة التسوية – '+m.n+' حركة',NM,{[IX(5)]:m.cr,[IX(6)]:m.dr,[IX(11)]:m.led}); }
       if(sp.bank.length&&sp.memo.length) S.total('الإجمالي العام',NM,{[IX(5)]:tc,[IX(6)]:td,[IX(11)]:tl});
     }
-    S.setWidths(dropSrc([5,15,12,26,46,15,15,10,12,24,46,15,34]));
+    S.setWidths(dropSrc([5,15,12,26,46,15,15,10,12,24,46,15,34]).concat(HM?[60]:[]));
     XW.utils.book_append_sheet(wb,S.build(true),name);
   };
   if(HAS_FAR) matchedSheet(R.mf,FAR,true,'الحركات المتطابقة بين كشف المصرف ودفتر الفرع','متطابق الفرع','دفتر الفرع');
@@ -3475,10 +3481,11 @@ function exportExcel0(outFmt){
     const acct=acctOf(ledgerAll, isFar?'فرع':'ادارة');
     const cp=counterAcct(acct.name, isFar?'ادارة':'فرع');
     const A1=isFar?'الفرع':'الادارة', A2=isFar?'الادارة':'الفرع';
-    const QC=dropSrc(['م','المصدر','تاريخ الحركة','الرقم المرجعي','بيان المصرف','دائن (+)','مدين (-)','رقم السند','تاريخ القيد','مرجع الدفتر','بيان الدفتر','المبلغ','اسم حساب '+A1,'رمز حساب '+A1,'اسم حساب '+A2,'رمز حساب '+A2,'أساس المطابقة']);
-    const QK=dropSrc(['neu','bank','bank','bank','bank','bank','bank','led','led','led','led','led','led','led','led','led','neu']);
-    const QT=dropSrc(['cen','cen','cen','txt','txt','num','num','cen','cen','txt','txt','num','txt','cen','txt','cen','txt']);
-    const NQ=16+SC();
+    const HM=hasMemoPairs(pairs);
+    const QC=dropSrc(['م','المصدر','تاريخ الحركة','الرقم المرجعي','بيان المصرف','دائن (+)','مدين (-)','رقم السند','تاريخ القيد','مرجع الدفتر','بيان الدفتر','المبلغ','اسم حساب '+A1,'رمز حساب '+A1,'اسم حساب '+A2,'رمز حساب '+A2,'أساس المطابقة']).concat(HM?[MEMO_COL]:[]);
+    const QK=dropSrc(['neu','bank','bank','bank','bank','bank','bank','led','led','led','led','led','led','led','led','led','neu']).concat(HM?['neu']:[]);
+    const QT=dropSrc(['cen','cen','cen','txt','txt','num','num','cen','cen','txt','txt','num','txt','cen','txt','cen','txt']).concat(HM?['txt']:[]);
+    const NQ=16+SC()+(HM?1:0);
     const S=new Sheet();
     S.headerMixed(QC,QK);                    // الصف الأول = رأس الجدول
     const one=list=>{
@@ -3488,7 +3495,7 @@ function exportExcel0(outFmt){
         cr+=b.credit; dr+=b.debit; led+=amt;
         const no=isMemoB(b)?('مذ-'+(++km)):String(++kb);
         S.rowMixed(dropSrc([no,xSrcLabel(b),b.dateStr,b.ref,b.bayan,b.credit||'',b.debit||'',l.sanad,E.fmtPad(l.pdt),l.ref,l.bayan,amt,
-          l.acct||acct.name, acct.code, cp.name, cp.code, x[2]+(isMemoB(b)?(' – '+memoRefOf(b)):'')]),xKinds(QK,b),QT,k%2===1); });
+          l.acct||acct.name, acct.code, cp.name, cp.code, x[2]]).concat(HM?[memoLoc(b)]:[]),xKinds(QK,b),QT,k%2===1); });
       return {cr,dr,led,n:list.length};
     };
     if(!groupOn()){ const r=one(pairs); S.total('الإجمالي',NQ,{[IX(5)]:r.cr,[IX(6)]:r.dr,[IX(11)]:r.led}); }
@@ -3499,7 +3506,7 @@ function exportExcel0(outFmt){
       if(sp.memo.length){ S.section('◄ حركات من مذكرة التسوية – '+sp.memo.length+' حركة',NQ); S.headerMixed(QC,QK); const m=one(sp.memo); tc+=m.cr;td+=m.dr;tl+=m.led; S.total('إجمالي حركات مذكرة التسوية – '+m.n+' حركة',NQ,{[IX(5)]:m.cr,[IX(6)]:m.dr,[IX(11)]:m.led}); }
       if(sp.bank.length&&sp.memo.length) S.total('الإجمالي العام',NQ,{[IX(5)]:tc,[IX(6)]:td,[IX(11)]:tl});
     }
-    S.setWidths(dropSrc([5,15,12,26,46,15,15,10,12,24,46,15,30,16,28,16,34]));
+    S.setWidths(dropSrc([5,15,12,26,46,15,15,10,12,24,46,15,30,16,28,16,34]).concat(HM?[60]:[]));
     XW.utils.book_append_sheet(wb,S.build(true),sheetName);
   };
   if(HAS_FAR) qaidSheet(R.mf, FAR_ALL, FAR, true, 'قيد الفرع');
@@ -3507,12 +3514,13 @@ function exportExcel0(outFmt){
   /* ورقة مستقلة: قيد الإقفال – الطرف المقابل لقيد الادارة */
   if(HAS_ADR){
     const ledger=ADR, pairs=R.ma, acct=acctOf(ADR,'ادارة');
-    const QC=dropSrc(['م','المصدر','تاريخ الحركة','الرقم المرجعي','بيان المصرف','رقم السند','تاريخ القيد','بيان الدفتر','الطرف','اسم الحساب','رمز الحساب','مدين','دائن','أساس المطابقة']);
-    const QK=dropSrc(['neu','bank','bank','bank','bank','led','led','led','neu','led','led','led','led','neu']);
-    const QKM=dropSrc(['neu','memo','memo','memo','memo','led','led','led','neu','led','led','led','led','neu']);
-    const QKC=dropSrc(['neu','bank','bank','bank','bank','led','led','led','neu','memo','memo','memo','memo','neu']);
-    const QT=dropSrc(['cen','cen','cen','txt','txt','cen','cen','txt','cen','txt','cen','num','num','txt']);
-    const NQ=13+SC();
+    const HM=hasMemoPairs(pairs), X=a=>HM?a.concat(a[a.length-1]):a;
+    const QC=dropSrc(['م','المصدر','تاريخ الحركة','الرقم المرجعي','بيان المصرف','رقم السند','تاريخ القيد','بيان الدفتر','الطرف','اسم الحساب','رمز الحساب','مدين','دائن','أساس المطابقة']).concat(HM?[MEMO_COL]:[]);
+    const QK=X(dropSrc(['neu','bank','bank','bank','bank','led','led','led','neu','led','led','led','led','neu']));
+    const QKM=X(dropSrc(['neu','memo','memo','memo','memo','led','led','led','neu','led','led','led','led','neu']));
+    const QKC=X(dropSrc(['neu','bank','bank','bank','bank','led','led','led','neu','memo','memo','memo','memo','neu']));
+    const QT=X(dropSrc(['cen','cen','cen','txt','txt','cen','cen','txt','cen','txt','cen','num','num','txt']));
+    const NQ=13+SC()+(HM?1:0);
     const S=new Sheet();
     S.headerMixed(QC,QK);
     const one=list=>{
@@ -3526,11 +3534,11 @@ function exportExcel0(outFmt){
         /* السطر الأصلي كما هو بدفتر الادارة */
         S.rowMixed(dropSrc([no,xSrcLabel(b),b.dateStr,b.ref,b.bayan,l.sanad,E.fmtPad(l.pdt),l.bayan,'أصلي',
           src, acctCodeOf(l.acct,'ادارة',acct.code), isDr?amt:'', isDr?'':amt,
-          x[2]+(isMemoB(b)?(' – '+memoRefOf(b)):'')]), isMemoB(b)?QKM:QK, QT, k%2===1);
+          x[2]]).concat(HM?[memoLoc(b)]:[]), isMemoB(b)?QKM:QK, QT, k%2===1);
         /* سطر الإقفال بالجانب المعاكس */
         S.rowMixed(dropSrc(['',xSrcLabel(b),b.dateStr,b.ref,b.bayan,l.sanad,E.fmtPad(l.pdt),l.bayan,'إقفال',
           ok?ca.name:(same?'⚠ حساب الإقفال مطابق لحساب القيد':'— لم يُعثر على حساب إقفال مطابق —'), ok?ca.code:'',
-          isDr?'':amt, isDr?amt:'', '']), QKC, QT, k%2===1); });
+          isDr?'':amt, isDr?amt:'', '']).concat(HM?['']:[]), QKC, QT, k%2===1); });
       return {td,tc,n:list.length};
     };
     const TOT=(lbl,r)=>S.total(lbl,NQ,{[IX(11)]:r.td,[IX(12)]:r.tc});
@@ -3541,7 +3549,7 @@ function exportExcel0(outFmt){
       if(sp.memo.length){ S.section('◄ حركات من مذكرة التسوية – '+sp.memo.length+' حركة',NQ); S.headerMixed(QC,QK); const m=one(sp.memo); acc.td+=m.td; acc.tc+=m.tc; TOT('إجمالي حركات مذكرة التسوية – '+m.n+' حركة',m); }
       if(sp.bank.length&&sp.memo.length) TOT('الإجمالي العام',acc);
     }
-    S.setWidths(dropSrc([5,15,12,26,46,10,12,46,34,40,17,15,15,30]));
+    S.setWidths(dropSrc([5,15,12,26,46,10,12,46,34,40,17,15,15,30]).concat(HM?[60]:[]));
     XW.utils.book_append_sheet(wb,S.build(true),'قيد الإقفال');
   }
 
